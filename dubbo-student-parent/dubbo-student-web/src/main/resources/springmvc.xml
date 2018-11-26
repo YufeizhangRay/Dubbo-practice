@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+	xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+	
+	<!-- 是一个集合体，自动给springmvc容器中注入很多bean，项目中需要 -->
+	<!-- <mvc:annotation-driven>
+		<mvc:message-converters register-defaults="false">
+			<bean class="org.springframework.http.converter.StringHttpMessageConverter">
+				<constructor-arg value="UTF-8"></constructor-arg>
+			</bean>
+		</mvc:message-converters>
+	</mvc:annotation-driven> -->
+	
+	<!-- 配置dubbo的应用名称 -->
+	<dubbo:application name="students-web"/>
+	<!-- 配置注册中心的地址 -->
+	<dubbo:registry address="zookeeper://192.168.188.135:2181"></dubbo:registry>
+	<!-- 配置dubbo扫描包 -->
+	<dubbo:annotation package="cn.zyf.dubbo.student.controller"/>
+	
+	<!-- 将控制器@Controller所在包加入IOC容器 -->
+	<context:component-scan base-package="cn.zyf.dubbo.student.controller"></context:component-scan>
+	
+	<!-- springmvc默认的视图解析器配置前缀和后缀 -->
+	<bean
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/jsp/"></property>
+		<property name="suffix" value=".jsp"></property>
+	</bean> 
+	
+</beans>

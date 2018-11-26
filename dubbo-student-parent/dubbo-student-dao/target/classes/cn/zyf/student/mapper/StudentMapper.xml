@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.zyf.student.mapper.StudentMapper">
+<!-- 
+namespace:名称空间;指定为接口的全类名
+id：唯一标识
+ -->
+  <select id="queryStudentByStuNo" parameterType="int" resultType="cn.zyf.dubbo.student.pojo.Student"> 
+    select student_no,student_name,student_age from student where student_no = #{stuNo}
+  </select>
+  <insert id="addStudent" parameterType="cn.zyf.dubbo.student.pojo.Student"> 
+    insert into student(student_no,student_name,student_age) values(#{stuNo},#{stuName},#{stuAge})
+  </insert>
+  
+</mapper>

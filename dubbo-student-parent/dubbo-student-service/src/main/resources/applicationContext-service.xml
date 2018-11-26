@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+		http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+	
+	<import resource="classpath:applicationContext-dao.xml"/>
+	
+	<!-- 配置dubbo应用名称 -->
+	<dubbo:application name="students-server"/>
+	<!-- 配置注册中心地址 -->
+	<dubbo:registry protocol="zookeeper" address="zookeeper://192.168.188.135:2181"></dubbo:registry>
+	<!-- 配置dubbo扫描包：将@service所在包放入dubbo扫描中 供后续rpc时使用 -->
+	<dubbo:annotation package="cn.zyf.dubbo.student.service.impl"/>
+	
+	<!-- 将@service所在包放入Spring扫描中 供后续依赖注入时使用-->
+	<context:component-scan base-package="cn.zyf.dubbo.student.service.impl"></context:component-scan>
+</beans>

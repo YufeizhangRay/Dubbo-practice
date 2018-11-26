@@ -1,0 +1,11 @@
+0:0:0:0:0:0:0:1 - - [26/Sep/2018:22:18:24 -0400] "GET /controller/queryStudentByNo HTTP/1.1" 400 1058 http-bio-8884-exec-1 121
+0:0:0:0:0:0:0:1 - - [26/Sep/2018:22:18:33 -0400] "GET /controller/queryStudentByNo?stuNo=1 HTTP/1.1" 500 11064 http-bio-8884-exec-2 194
+0:0:0:0:0:0:0:1 - - [26/Sep/2018:22:27:39 -0400] "GET /controller/queryStudentByNo?stuNo=1 HTTP/1.1" 500 16844 http-bio-8884-exec-1 919
+0:0:0:0:0:0:0:1 - - [26/Sep/2018:22:29:47 -0400] "GET /controller/queryStudentByNo?stuNo=1 HTTP/1.1" 200 7 http-bio-8884-exec-1 960
+0:0:0:0:0:0:0:1 - - [26/Sep/2018:22:38:33 -0400] "GET /controller/queryStudentByNo?stuNo=1 HTTP/1.1" 200 267 http-bio-8884-exec-1 1121
+0:0:0:0:0:0:0:1 - - [26/Sep/2018:22:38:40 -0400] "GET /controller/queryStudentByNo?stuNo=2 HTTP/1.1" 200 267 http-bio-8884-exec-2 6
+0:0:0:0:0:0:0:1 - - [26/Sep/2018:22:38:45 -0400] "GET /controller/queryStudentByNo?stuNo=3 HTTP/1.1" 200 267 http-bio-8884-exec-3 6
+0:0:0:0:0:0:0:1 - - [26/Sep/2018:22:39:28 -0400] "GET /controller/addStudent?stuNo=4?stuName=ccc?stuAge=22 HTTP/1.1" 400 968 http-bio-8884-exec-4 5
+0:0:0:0:0:0:0:1 - - [26/Sep/2018:22:39:51 -0400] "GET /controller/addStudent?stuNo=4&stuName=ccc&stuAge=22 HTTP/1.1" 200 7 http-bio-8884-exec-5 26
+0:0:0:0:0:0:0:1 - - [26/Sep/2018:22:40:44 -0400] "GET /controller/queryStudentByNo?stuNo=4 HTTP/1.1" 200 267 http-bio-8884-exec-6 6
+0:0:0:0:0:0:0:1 - - [26/Sep/2018:22:41:28 -0400] "GET /controller/addStudent?stuNo=5&stuName=ddd&stuAge=24 HTTP/1.1" 200 7 http-bio-8884-exec-7 7
