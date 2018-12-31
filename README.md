@@ -308,8 +308,8 @@ createAdaptiveExtensionClass
 1.	createAdaptiveExtensionClassCode,  动态创建一个字节码文件。返回code这个字符串
 2.	通过compiler.compile进行编译（默认情况下使用的是javassist）
 3.	通过ClassLoader加载到jvm中
-//创建一个适配器扩展点。（创建一个动态的字节码文件）
-```private Class<?> createAdaptiveExtensionClass() {
+```//创建一个适配器扩展点。（创建一个动态的字节码文件）
+private Class<?> createAdaptiveExtensionClass() {
     //生成字节码代码
     String code = createAdaptiveExtensionClassCode();
     //获得类加载器
@@ -367,8 +367,8 @@ getExtensionClasses这个方法，就是加载扩展点实现类了。这段代�
 1.	从cachedClasses中获得一个结果，这个结果实际上就是所有的扩展点类，key对应name，value对应class
 2.	通过双重检查锁进行判断
 3.	调用loadExtensionClasses，去加载左右扩展点的实现
-//加载扩展点的实现类
-```private Map<String, Class<?>> getExtensionClasses() {
+```//加载扩展点的实现类
+private Map<String, Class<?>> getExtensionClasses() {
        
        Map<String, Class<?>> classes = cachedClasses.get();
        if (classes == null) {
@@ -456,7 +456,7 @@ loadFile
                                         }
 
                                         //判断是否有自定义适配类，如果有，则在前面讲过的获取适配类的时候，直接返回当前的自定义适配类，不需要再动态创建
-// 还记得在前面讲过的getAdaptiveExtensionClass中有一个判断吗？是用来判断cachedAdaptiveClass是不是为空的。如果不为空，表示存在自定义扩展点。也就不会去动态生成字节码了。这个地方可以得到一个简单的结论；
+// 在前面的getAdaptiveExtensionClass中有一个判断,用来判断cachedAdaptiveClass是不是为空。如果不为空，表示存在自定义扩展点。也就不会去动态生成字节码了。这个地方可以得到一个简单的结论；
 // @Adaptive如果是加在类上， 表示当前类是一个自定义的自适应扩展点
 //如果是加在方法级别上，表示需要动态创建一个自适应扩展点，也就是Protocol$Adaptive
                                         if (clazz.isAnnotationPresent(Adaptive.class)) {
