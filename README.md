@@ -721,7 +721,8 @@ logger.error(e.getMessage(), e); }
  } });
 }
 ```
-代码分析到这里，我们对于 getRegistry 得出了一个结论，根据当前注册中心的配置信息，获得一个匹配的注册中心，也就是 ZookeeperRegistry  
+代码分析到这里，我们对于 getRegistry 得出了一个结论，根据当前注册中心的配置信息，获得一个匹配的注册中心，也就是 ZookeeperRegistry 
+  
 registry.register(registedProviderUrl);  
 继续往下分析，会调用 registry.register 去将 dubbo://的协议地址注册到 zookeeper上。  
 这个方法会调用 FailbackRegistry 类中的 register。因为 ZookeeperRegistry 这个类中并没有 register 这个方法，但是他的父类 FailbackRegistry 中存在 register 方法，而这个类又重写了 AbstractRegistry 类中的 register 方法。所以我们可以直接定位大 FailbackRegistry 这个类中的 register 方法中。  
