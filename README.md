@@ -297,7 +297,7 @@ public T getAdaptiveExtension() {
 }
 ```
 createAdaptiveExtension  
-这段代码里面有两个结构，一个是injectExtension.  另一个是getAdaptiveExtensionClass()
+这段代码里面有两个结构，一个是injectExtension，另一个是getAdaptiveExtensionClass()。  
 我们需要先去了解getAdaptiveExtensionClass这个方法做了什么？很显然，从后面的.newInstance来看，应该是获得一个类并且进行实例。
 
 ```
@@ -312,10 +312,11 @@ private T createAdaptiveExtension() {
 ```
 getAdaptiveExtensionClass  
 从类名来看，是获得一个适配器扩展点的类。
-在这段代码中，做了两个事情
->1.getExtensionClasses() 加载所有路径下的扩展点  
->2.createAdaptiveExtensionClass() 动态创建一个扩展点  
-cachedAdaptiveClass这里有个判断，用来判断当前Protocol这个扩展点是否存在一个自定义的适配器，如果有，则直接返回自定义适配器，否则，就动态创建，这个值是在getExtensionClasses中赋值的
+在这段代码中，做了两个事情。
+>1.getExtensionClasses() 加载所有路径下的扩展点。  
+>2.createAdaptiveExtensionClass() 动态创建一个扩展点。  
+  
+cachedAdaptiveClass这里有个判断，用来判断当前Protocol这个扩展点是否存在一个自定义的适配器，如果有，则直接返回自定义适配器，否则，就动态创建，这个值是在getExtensionClasses中赋值的。
 ```
 private Class<?> getAdaptiveExtensionClass() {
     getExtensionClasses();
@@ -326,10 +327,10 @@ private Class<?> getAdaptiveExtensionClass() {
 }
 ```
 createAdaptiveExtensionClass  
-动态生成适配器代码，以及动态编译
->1.createAdaptiveExtensionClassCode,  动态创建一个字节码文件。返回code这个字符串  
->2.通过compiler.compile进行编译（默认情况下使用的是javassist）  
->3.通过ClassLoader加载到jvm中  
+动态生成适配器代码，以及动态编译。
+>1.createAdaptiveExtensionClassCode，动态创建一个字节码文件。返回code这个字符串。  
+>2.通过compiler.compile进行编译（默认情况下使用的是javassist）。  
+>3.通过ClassLoader加载到jvm中。  
 ```
 //创建一个适配器扩展点。（创建一个动态的字节码文件）
 private Class<?> createAdaptiveExtensionClass() {
@@ -410,7 +411,8 @@ private Map<String, Class<?>> getExtensionClasses() {
 }
 ```
 loadExtensionClasses  
-从不同目录去加载扩展点的实现，在最开始的时候题到过的。META-INF/dubbo ；META-INF/internal ; META-INF/services  
+从不同目录去加载扩展点的实现，在最开始的时候题到过的。META-INF/dubbo;META-INF/internal;META-INF/services;  
+  
 主要逻辑
 >1.获得当前扩展点的注解，也就是Protocol.class这个类的注解，@SPI  
 >2.判断这个注解不为空，则再次获得@SPI中的value值  
