@@ -571,13 +571,13 @@ Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class). getAdapt
   
 injectExtension  
 简单来说，这个方法的作用，是为这个自适应扩展点进行依赖注入。类似于spring里面的依赖注入功能。为适配器类的setter方法插入其他扩展点或实现。  
-![]()  
+![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/inject.jpeg)  
   
 这里可以看到，扩展点自动注入的一句就是根据 setter 方法对应的参数类 型和 property 名称从 ExtensionFactory 中查询，如果有返回扩展点实例， 那么就进行注入操作。到这里 getAdaptiveExtension 方法就分析完毕了。  
 
 #### 服务发布  
     
-ServiceBean在初始化的时候会调afterPropertiesSet方法，其中又调用了父类ServiceConfig的export方法。
+ServiceBean在初始化的时候会调afterPropertiesSet方法，其中又调用了父类ServiceConfig的export方法。  
 export->doExport->doExportUrls  
 其中doExportUrls有如下代码：  
 ```
@@ -631,9 +631,8 @@ ProtocolFilterWrapper
 >2.它实现了 Protocol 接口;  
 >3.它使用责任链模式，对 export 和 refer 函数进行了封装  
   
-现在我们能够定位到 DubboProtocol.export(invoker) 方法，从invoker中获取到url，再调用openServer(url)方法来暴露服务。  
-底层最终通过 NettyTranport 创建基于 Netty 的 server 服务。  
-![]()  
+现在我们能够定位到 DubboProtocol.export(invoker) 方法，从invoker中获取到url，再调用openServer(url)方法来暴露服务。底层最终通过 NettyTranport 创建基于 Netty 的 server 服务。  
+![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%9C%8D%E5%8A%A1%E6%9A%B4%E9%9C%B2.jpeg)  
   
 #### 服务注册  
   
@@ -650,8 +649,8 @@ return registryFactory.getRegistry(registryUrl);
 ```
 RegistryFactory 这个类的定义是一个扩展点，所以这个自适应适配器应该是 RegistryFactory$Adaptive。  
 我们拿到这个动态生成的自适应扩展点，看看这段代码里面的实现  
-1. 从 url 中拿到协议头信息，这个时候的协议头是 zookeeper://  
-2. 通过ExtensionLoader.getExtensionLoader(RegistryFactory.class).getExtension(“zookeeper”)去获得一个指定的扩展点，得到一个 ZookeeperRegistryFactory
+>1. 从 url 中拿到协议头信息，这个时候的协议头是 zookeeper://  
+>2. 通过ExtensionLoader.getExtensionLoader(RegistryFactory.class).getExtension(“zookeeper”)去获得一个指定的扩展点，得到一个 ZookeeperRegistryFactory
 ```
  public class RegistryFactory$Adaptive implements com.alibaba.dubbo.registry.RegistryFactory {
  public com.alibaba.dubbo.registry.Registry getRegistry(com.alibaba.dubbo.common.URL arg0) {
@@ -669,8 +668,8 @@ RegistryFactory 这个类的定义是一个扩展点，所以这个自适应适�
  }
  ```
 这个方法中并没有 getRegistry 方法，而是在父类 AbstractRegistryFactory  
-1. 从缓存 REGISTRIES 中，根据 key 获得对应的 Registry  
-2. 如果不存在，则创建Registry  
+>1. 从缓存 REGISTRIES 中，根据 key 获得对应的 Registry  
+>2. 如果不存在，则创建Registry  
 ```
  public Registry getRegistry(URL url) {
  url = url.setPath(RegistryService.class.getName())
@@ -722,7 +721,7 @@ logger.error(e.getMessage(), e); }
  } });
 }
 ```
-代码分析到这里，我们对于 getRegistry 得出了一个结论，根据当前注册中心的配置信息，获得一个匹配的注册中心，也就是 ZookeeperRegistry
+代码分析到这里，我们对于 getRegistry 得出了一个结论，根据当前注册中心的配置信息，获得一个匹配的注册中心，也就是 ZookeeperRegistry  
 registry.register(registedProviderUrl);  
 继续往下分析，会调用 registry.register 去将 dubbo://的协议地址注册到 zookeeper上。  
 这个方法会调用 FailbackRegistry 类中的 register。因为 ZookeeperRegistry 这个类中并没有 register 这个方法，但是他的父类 FailbackRegistry 中存在 register 方法，而这个类又重写了 AbstractRegistry 类中的 register 方法。所以我们可以直接定位大 FailbackRegistry 这个类中的 register 方法中。  
@@ -730,4 +729,29 @@ FailbackRegistry.register
 >1. FailbackRegistry，从名字上来看，是一个失败重试机制  
 >2. 调用父类的register方法，讲当前url添加到缓存集合中  
 >3. 调用 doRegister 方法，这个方法很明显，是一个抽象方法，会由ZookeeperRegistry 子类实现  
+```
+@Override
+public void register(URL url) {
+     super.register(url);
+ failedRegistered.remove(url);
+ failedUnregistered.remove(url);
+ try {
+ // 向服务器端发送注册请求
+ doRegister(url);
+ } catch (Exception e) {
+ ......
+ ```
+ZookeeperRegistry.doRegister  
+调用 zkclient.create 在 zookeeper 中创建一个节点。
+```
+ protected void doRegister(URL url) {
+ try {
+ zkClient.create(toUrlPath(url),url.getParameter(Constants.DYNAMIC_KEY, true));
+ } catch (Throwable e) {
+ throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);  
+     }
+ }
+```
+
+
   
