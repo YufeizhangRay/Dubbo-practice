@@ -313,8 +313,8 @@ private T createAdaptiveExtension() {
 getAdaptiveExtensionClass  
 从类名来看，是获得一个适配器扩展点的类。
 在这段代码中，做了两个事情
->1.getExtensionClasses() 加载所有路径下的扩展点
->2.createAdaptiveExtensionClass() 动态创建一个扩展点
+>1.getExtensionClasses() 加载所有路径下的扩展点  
+>2.createAdaptiveExtensionClass() 动态创建一个扩展点  
 cachedAdaptiveClass这里有个判断，用来判断当前Protocol这个扩展点是否存在一个自定义的适配器，如果有，则直接返回自定义适配器，否则，就动态创建，这个值是在getExtensionClasses中赋值的
 ```
 private Class<?> getAdaptiveExtensionClass() {
@@ -327,9 +327,9 @@ private Class<?> getAdaptiveExtensionClass() {
 ```
 createAdaptiveExtensionClass  
 动态生成适配器代码，以及动态编译
->1.createAdaptiveExtensionClassCode,  动态创建一个字节码文件。返回code这个字符串
->2.通过compiler.compile进行编译（默认情况下使用的是javassist）
->3.通过ClassLoader加载到jvm中
+>1.createAdaptiveExtensionClassCode,  动态创建一个字节码文件。返回code这个字符串  
+>2.通过compiler.compile进行编译（默认情况下使用的是javassist）  
+>3.通过ClassLoader加载到jvm中  
 ```
 //创建一个适配器扩展点。（创建一个动态的字节码文件）
 private Class<?> createAdaptiveExtensionClass() {
@@ -377,8 +377,9 @@ public class Protocol$Adaptive implements com.alibaba.dubbo.rpc.Protocol {
 }
 ```
 Protocol$Adaptive的主要功能 
-1. 从url或扩展接口获取扩展接口实现类的名称；  
-2.根据名称，获取实现类ExtensionLoader.getExtensionLoader(扩展接口类).getExtension(扩展接口实现类名称)，然后调用实现类的方法。  
+>1.从URL或扩展接口获取扩展接口实现类的名称；  
+>2.根据名称，获取实现类ExtensionLoader.getExtensionLoader(扩展接口类).getExtension(扩展接口实现类名称)，然后调用实现类的方法。  
+  
 需要明白一点dubbo的内部传参基本上都是基于URL来实现的，也就是说Dubbo是基于URL驱动的技术。  
 所以，适配器类的目的是在运行期获取扩展的真正实现来调用，解耦接口和实现，这样的话要不我们自己实现适配器类，要不dubbo帮我们生成，而这些都是通过Adpative来实现。  
 到目前为止，我们的AdaptiveExtension的主线走完了，可以简单整理一下他们的调用关系如下：  
@@ -388,9 +389,9 @@ Protocol$Adaptive的主要功能
   
 getExtensionClasses  
 getExtensionClasses这个方法，就是加载扩展点实现类了。  
->1.从cachedClasses中获得一个结果，这个结果实际上就是所有的扩展点类，key对应name，value对应class
->2.通过双重检查锁进行判断
->3.调用loadExtensionClasses，去加载左右扩展点的实现
+>1.从cachedClasses中获得一个结果，这个结果实际上就是所有的扩展点类，key对应name，value对应class  
+>2.通过双重检查锁进行判断  
+>3.调用loadExtensionClasses，去加载左右扩展点的实现  
 ```
 //加载扩展点的实现类
 private Map<String, Class<?>> getExtensionClasses() {
@@ -411,13 +412,12 @@ private Map<String, Class<?>> getExtensionClasses() {
 loadExtensionClasses  
 从不同目录去加载扩展点的实现，在最开始的时候题到过的。META-INF/dubbo ；META-INF/internal ; META-INF/services  
 主要逻辑
->1.获得当前扩展点的注解，也就是Protocol.class这个类的注解，@SPI
->2.判断这个注解不为空，则再次获得@SPI中的value值
->3.如果value有值，也就是@SPI(“dubbo”)，则讲这个dubbo的值赋给cachedDefaultName。这就是为什么我们能够通过
-ExtensionLoader.getExtensionLoader(Protocol.class).getDefaultExtension() ,能够获得DubboProtocol这个扩展点的原因
->4.最后，通过loadFile去加载指定路径下的所有扩展点。也就是META-INF/dubbo;META-INF/internal;META-INF/services
+>1.获得当前扩展点的注解，也就是Protocol.class这个类的注解，@SPI  
+>2.判断这个注解不为空，则再次获得@SPI中的value值  
+>3.如果value有值，也就是@SPI(“dubbo”)，则将这个dubbo的值赋给cachedDefaultName。这就是为什么我们能够通过
+ExtensionLoader.getExtensionLoader(Protocol.class).getDefaultExtension() ,能够获得DubboProtocol这个扩展点的原因  
+>4.最后，通过loadFile去加载指定路径下的所有扩展点。也就是META-INF/dubbo;META-INF/internal;META-INF/services  
 ```
-// 此方法已经getExtensionClasses方法同步过。
 private Map<String, Class<?>> loadExtensionClasses() {
     //type->Protocol.class
     //得到SPI的注解
@@ -481,7 +481,7 @@ private void loadFile(Map<String, Class<?>> extensionClasses, String dir) {
                                                     + clazz.getName() + "is not subtype of interface.");
                                         }
 
-                                        //判断是否有自定义适配类，如果有，则在前面讲过的获取适配类的时候，直接返回当前的自定义适配类，不需要再动态创建
+                                        //判断是否有自定义适配类，如果有，则在前面获取适配类的时候，直接返回当前的自定义适配类，不需要再动态创建
 // 在前面的getAdaptiveExtensionClass中有一个判断,用来判断cachedAdaptiveClass是不是为空。如果不为空，表示存在自定义扩展点。也就不会去动态生成字节码了。这个地方可以得到一个简单的结论；
 // @Adaptive如果是加在类上， 表示当前类是一个自定义的自适应扩展点
 //如果是加在方法级别上，表示需要动态创建一个自适应扩展点，也就是Protocol$Adaptive
