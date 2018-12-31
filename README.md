@@ -71,7 +71,25 @@ Dubbo支持的协议：dubbo、RMI、hessian、webservice、http、thirft，默�
   
 主机绑定  
 在发布一个Dubbo服务的时候，会生成一个dubbo://ip:port的协议地址，那么这个IP是根据什么生成的呢？可以在ServiceConfig.java代码中找到代码;可以发现，在生成绑定的主机的时候，会通过一层一层的判断，直到获取到合法的ip地址。  
-  
+```
+1.	NetUtils.isInvalidLocalHost(host)， 从配置文件中获取host
+2.	host = InetAddress.getLocalHost().getHostAddress();
+3.	Socket socket = new Socket();
+try {
+    SocketAddress addr = new InetSocketAddress(registryURL.getHost(), registryURL.getPort());
+    socket.connect(addr, 1000);
+    host = socket.getLocalAddress().getHostAddress();
+    break;
+} finally {
+    try {
+        socket.close();
+    } catch (Throwable e) {}
+}
+4.public static String getLocalHost(){
+  InetAddress address = getLocalAddress();
+  return address == null ? LOCALHOST : address.getHostAddress();
+}
+  ```
 集群容错  
 什么是容错机制？ 容错机制指的是某种系统控制在一定范围内的一种允许或包容犯错情况发生的能力。举个简单例子，电脑上运行一个程序，有时候会出现无响应的情况，然后系统会弹出一个提示框让我们选择，是立即结束还是继续等待，然后根据我们的选择执行对应的操作，这就是“容错”。  
 在分布式架构下，网络、硬件、应用都可能发生故障，由于各个服务之间可能存在依赖关系，如果一条链路中的其中一个节点出现故障，将会导致雪崩效应。为了减少某一个节点故障的影响范围，所以我们才需要去构建容错服务，来优雅的处理这种中断的响应结果。  
@@ -216,7 +234,8 @@ public interface Protocol {
 getExtensionLoader
 该方法需要一个Class类型的参数，该参数表示希望加载的扩展点类型，该参数必须是接口，且该接口必须被@SPI注解注释，否则拒绝处理。检查通过之后首先会检查ExtensionLoader缓存中是否已经存在该扩展对应的ExtensionLoader，如果有则直接返回，否则创建一个新的ExtensionLoader负责加载该扩展实现，同时将其缓存起来。可以看到对于每一个扩展，dubbo中只会有一个对应的ExtensionLoader实例    
 
-```@SuppressWarnings("unchecked")    
+```
+@SuppressWarnings("unchecked")    
 public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {    
     if (type == null)    
         throw new IllegalArgumentException("Extension type == null");    
@@ -238,7 +257,8 @@ public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
 ```
 
 ExtensionLoader提供了一个私有的构造函数，并且在这里面对两个成员变量type/objectFactory进行赋值。
-```private ExtensionLoader(Class<?> type) {
+```
+private ExtensionLoader(Class<?> type) {
     this.type = type;
     objectFactory = (type == ExtensionFactory.class ? null :
             ExtensionLoader.getExtensionLoader(ExtensionFactory.class).
@@ -251,7 +271,8 @@ ps：这个自适应扩展点实际上就是一个适配器。
 这个方法里面主要做几个事情：
 1.	从cacheAdaptiveInstance 这个内存缓存中获得一个对象实例
 2.	如果实例为空，说明是第一次加载，则通过双重检查锁的方式去创建一个适配器扩展点
-```public T getAdaptiveExtension() {
+```
+public T getAdaptiveExtension() {
     Object instance = cachedAdaptiveInstance.get();
     if (instance == null) {
         if(createAdaptiveInstanceError == null) {
@@ -279,7 +300,8 @@ createAdaptiveExtension
 这段代码里面有两个结构，一个是injectExtension.  另一个是getAdaptiveExtensionClass()
 我们需要先去了解getAdaptiveExtensionClass这个方法做了什么？很显然，从后面的.newInstance来看，应该是获得一个类并且进行实例。
 
-```private T createAdaptiveExtension() {
+```
+private T createAdaptiveExtension() {
     try {
         //可以实现扩展点的注入
         return injectExtension((T) getAdaptiveExtensionClass().newInstance());
@@ -294,7 +316,8 @@ getAdaptiveExtensionClass
 1.	getExtensionClasses() 加载所有路径下的扩展点
 2.	createAdaptiveExtensionClass() 动态创建一个扩展点
 cachedAdaptiveClass这里有个判断，用来判断当前Protocol这个扩展点是否存在一个自定义的适配器，如果有，则直接返回自定义适配器，否则，就动态创建，这个值是在getExtensionClasses中赋值的
-```private Class<?> getAdaptiveExtensionClass() {
+```
+private Class<?> getAdaptiveExtensionClass() {
     getExtensionClasses();
     //TODO  不一定？
     if (cachedAdaptiveClass != null) {
@@ -308,7 +331,8 @@ createAdaptiveExtensionClass
 1.	createAdaptiveExtensionClassCode,  动态创建一个字节码文件。返回code这个字符串
 2.	通过compiler.compile进行编译（默认情况下使用的是javassist）
 3.	通过ClassLoader加载到jvm中
-```//创建一个适配器扩展点。（创建一个动态的字节码文件）
+```
+//创建一个适配器扩展点。（创建一个动态的字节码文件）
 private Class<?> createAdaptiveExtensionClass() {
     //生成字节码代码
     String code = createAdaptiveExtensionClassCode();
@@ -320,7 +344,8 @@ private Class<?> createAdaptiveExtensionClass() {
 }
 ```
 CODE的字节码内容
-```public class Protocol$Adaptive implements com.alibaba.dubbo.rpc.Protocol {
+```
+public class Protocol$Adaptive implements com.alibaba.dubbo.rpc.Protocol {
     public void destroy() {
         throw new UnsupportedOperationException("method public abstract void com.alibaba.dubbo.rpc.Protocol.destroy() of interface com.alibaba.dubbo.rpc.Protocol is not adaptive method!");
     }
@@ -367,7 +392,8 @@ getExtensionClasses这个方法，就是加载扩展点实现类了。这段代�
 1.	从cachedClasses中获得一个结果，这个结果实际上就是所有的扩展点类，key对应name，value对应class
 2.	通过双重检查锁进行判断
 3.	调用loadExtensionClasses，去加载左右扩展点的实现
-```//加载扩展点的实现类
+```
+//加载扩展点的实现类
 private Map<String, Class<?>> getExtensionClasses() {
        
        Map<String, Class<?>> classes = cachedClasses.get();
@@ -417,7 +443,8 @@ private Map<String, Class<?>> loadExtensionClasses() {
 ```
 loadFile
 解析指定路径下的文件，获取对应的扩展点，通过反射的方式进行实例化以后，put到extensionClasses这个Map集合中
-```private void loadFile(Map<String, Class<?>> extensionClasses, String dir) {
+```
+private void loadFile(Map<String, Class<?>> extensionClasses, String dir) {
     String fileName = dir + type.getName();
     try {
         Enumeration<java.net.URL> urls;
