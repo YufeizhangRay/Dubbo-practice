@@ -162,7 +162,7 @@ Protocol源码
 以下是Protocol的源码，在这个源码中可以看到有两个注解，一个是在类级别上的@SPI(“dubbo”). 另一个是@Adaptive
 @SPI 表示当前这个接口是一个扩展点，可以实现自己的扩展实现，默认的扩展点是DubboProtocol。
 @Adaptive  表示一个自适应扩展点，在方法级别上，会动态生成一个适配器类
-
+```
 @SPI("dubbo")
 public interface Protocol {
     
@@ -209,24 +209,25 @@ public interface Protocol {
      * 3. 协议在释放后，依然能暴露和引用新的服务。<br>
      */
     void destroy();
-}  
+}
+```
 由上述源码可知，我们可以通过Protocol来发布暴露(export()方法)服务于引用消费(refer()方法)服务。  
   
 getExtensionLoader
-该方法需要一个Class类型的参数，该参数表示希望加载的扩展点类型，该参数必须是接口，且该接口必须被@SPI注解注释，否则拒绝处理。检查通过之后首先会检查ExtensionLoader缓存中是否已经存在该扩展对应的ExtensionLoader，如果有则直接返回，否则创建一个新的ExtensionLoader负责加载该扩展实现，同时将其缓存起来。可以看到对于每一个扩展，dubbo中只会有一个对应的ExtensionLoader实例
+该方法需要一个Class类型的参数，该参数表示希望加载的扩展点类型，该参数必须是接口，且该接口必须被@SPI注解注释，否则拒绝处理。检查通过之后首先会检查ExtensionLoader缓存中是否已经存在该扩展对应的ExtensionLoader，如果有则直接返回，否则创建一个新的ExtensionLoader负责加载该扩展实现，同时将其缓存起来。可以看到对于每一个扩展，dubbo中只会有一个对应的ExtensionLoader实例    
 
-@SuppressWarnings("unchecked")
-public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
-    if (type == null)
-        throw new IllegalArgumentException("Extension type == null");
-    if(!type.isInterface()) {
-        throw new IllegalArgumentException("Extension type(" + type + ") is not interface!");
+```@SuppressWarnings("unchecked")    
+public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {    
+    if (type == null)    
+        throw new IllegalArgumentException("Extension type == null");    
+    if(!type.isInterface()) {    
+        throw new IllegalArgumentException("Extension type(" + type + ") is not interface!");    
+    }    
+    if(!withExtensionAnnotation(type)) {    
+        throw new IllegalArgumentException("Extension type(" + type +     
+                ") is not extension, because WITHOUT @" + SPI.class.getSimpleName() + " Annotation!");    
     }
-    if(!withExtensionAnnotation(type)) {
-        throw new IllegalArgumentException("Extension type(" + type + 
-                ") is not extension, because WITHOUT @" + SPI.class.getSimpleName() + " Annotation!");
-    }
-    
+ 
     ExtensionLoader<T> loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
     if (loader == null) {
         EXTENSION_LOADERS.putIfAbsent(type, new ExtensionLoader<T>(type));
@@ -234,21 +235,23 @@ public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
     }
     return loader;
 }
+```
+
 ExtensionLoader提供了一个私有的构造函数，并且在这里面对两个成员变量type/objectFactory进行赋值。
-private ExtensionLoader(Class<?> type) {
+```private ExtensionLoader(Class<?> type) {
     this.type = type;
     objectFactory = (type == ExtensionFactory.class ? null :
             ExtensionLoader.getExtensionLoader(ExtensionFactory.class).
                     getAdaptiveExtension());
 }
-
+```
 getAdaptiveExtension
 通过getExtensionLoader获得了对应的ExtensionLoader实例以后，再调用getAdaptiveExtension()方法来获得一个自适应扩展点。
 ps：这个自适应扩展点实际上就是一个适配器。
 这个方法里面主要做几个事情：
 1.	从cacheAdaptiveInstance 这个内存缓存中获得一个对象实例
 2.	如果实例为空，说明是第一次加载，则通过双重检查锁的方式去创建一个适配器扩展点
-public T getAdaptiveExtension() {
+```public T getAdaptiveExtension() {
     Object instance = cachedAdaptiveInstance.get();
     if (instance == null) {
         if(createAdaptiveInstanceError == null) {
@@ -271,12 +274,12 @@ public T getAdaptiveExtension() {
     }
     return (T) instance;
 }
-
+```
 createAdaptiveExtension
 这段代码里面有两个结构，一个是injectExtension.  另一个是getAdaptiveExtensionClass()
 我们需要先去了解getAdaptiveExtensionClass这个方法做了什么？很显然，从后面的.newInstance来看，应该是获得一个类并且进行实例。
 
-private T createAdaptiveExtension() {
+```private T createAdaptiveExtension() {
     try {
         //可以实现扩展点的注入
         return injectExtension((T) getAdaptiveExtensionClass().newInstance());
@@ -284,14 +287,14 @@ private T createAdaptiveExtension() {
         throw new IllegalStateException("Can not create adaptive extenstion " + type + ", cause: " + e.getMessage(), e);
     }
 }
-
+```
 getAdaptiveExtensionClass
 从类名来看，是获得一个适配器扩展点的类。
 在这段代码中，做了两个事情
 1.	getExtensionClasses() 加载所有路径下的扩展点
 2.	createAdaptiveExtensionClass() 动态创建一个扩展点
 cachedAdaptiveClass这里有个判断，用来判断当前Protocol这个扩展点是否存在一个自定义的适配器，如果有，则直接返回自定义适配器，否则，就动态创建，这个值是在getExtensionClasses中赋值的
-private Class<?> getAdaptiveExtensionClass() {
+```private Class<?> getAdaptiveExtensionClass() {
     getExtensionClasses();
     //TODO  不一定？
     if (cachedAdaptiveClass != null) {
@@ -299,14 +302,14 @@ private Class<?> getAdaptiveExtensionClass() {
     }
     return cachedAdaptiveClass = createAdaptiveExtensionClass();
 }
-
+```
 createAdaptiveExtensionClass
 动态生成适配器代码，以及动态编译
 1.	createAdaptiveExtensionClassCode,  动态创建一个字节码文件。返回code这个字符串
 2.	通过compiler.compile进行编译（默认情况下使用的是javassist）
 3.	通过ClassLoader加载到jvm中
 //创建一个适配器扩展点。（创建一个动态的字节码文件）
-private Class<?> createAdaptiveExtensionClass() {
+```private Class<?> createAdaptiveExtensionClass() {
     //生成字节码代码
     String code = createAdaptiveExtensionClassCode();
     //获得类加载器
@@ -315,8 +318,9 @@ private Class<?> createAdaptiveExtensionClass() {
     //动态编译字节码
     return compiler.compile(code, classLoader);
 }
+```
 CODE的字节码内容
-public class Protocol$Adaptive implements com.alibaba.dubbo.rpc.Protocol {
+```public class Protocol$Adaptive implements com.alibaba.dubbo.rpc.Protocol {
     public void destroy() {
         throw new UnsupportedOperationException("method public abstract void com.alibaba.dubbo.rpc.Protocol.destroy() of interface com.alibaba.dubbo.rpc.Protocol is not adaptive method!");
     }
@@ -347,6 +351,7 @@ public class Protocol$Adaptive implements com.alibaba.dubbo.rpc.Protocol {
         return extension.export(arg0);
     }
 }
+```
 Protocol$Adaptive的主要功能 
 1. 从url或扩展接口获取扩展接口实现类的名称； 
 2.根据名称，获取实现类ExtensionLoader.getExtensionLoader(扩展接口类).getExtension(扩展接口实现类名称)，然后调用实现类的方法。
@@ -363,7 +368,7 @@ getExtensionClasses这个方法，就是加载扩展点实现类了。这段代�
 2.	通过双重检查锁进行判断
 3.	调用loadExtensionClasses，去加载左右扩展点的实现
 //加载扩展点的实现类
-private Map<String, Class<?>> getExtensionClasses() {
+```private Map<String, Class<?>> getExtensionClasses() {
        
        Map<String, Class<?>> classes = cachedClasses.get();
        if (classes == null) {
@@ -377,7 +382,7 @@ private Map<String, Class<?>> getExtensionClasses() {
        }
        return classes;
 }
-
+```
 loadExtensionClasses
 从不同目录去加载扩展点的实现，在最开始的时候讲到过的。META-INF/dubbo ；META-INF/internal ; META-INF/services
 主要逻辑
@@ -386,7 +391,7 @@ loadExtensionClasses
 3.	如果value有值，也就是@SPI(“dubbo”)，则讲这个dubbo的值赋给cachedDefaultName。这就是为什么我们能够通过
 ExtensionLoader.getExtensionLoader(Protocol.class).getDefaultExtension() ,能够获得DubboProtocol这个扩展点的原因
 4.	最后，通过loadFile去加载指定路径下的所有扩展点。也就是META-INF/dubbo;META-INF/internal;META-INF/services
-
+```
 // 此方法已经getExtensionClasses方法同步过。
 private Map<String, Class<?>> loadExtensionClasses() {
     //type->Protocol.class
@@ -409,10 +414,10 @@ private Map<String, Class<?>> loadExtensionClasses() {
     loadFile(extensionClasses, SERVICES_DIRECTORY);
     return extensionClasses;
 }
-
+```
 loadFile
 解析指定路径下的文件，获取对应的扩展点，通过反射的方式进行实例化以后，put到extensionClasses这个Map集合中
-private void loadFile(Map<String, Class<?>> extensionClasses, String dir) {
+```private void loadFile(Map<String, Class<?>> extensionClasses, String dir) {
     String fileName = dir + type.getName();
     try {
         Enumeration<java.net.URL> urls;
@@ -530,7 +535,7 @@ private void loadFile(Map<String, Class<?>> extensionClasses, String dir) {
                 type + ", description file: " + fileName + ").", t);
     }
 }
-
+```
 阶段性小结
 截止到目前，我们已经把基于Protocol的自适应扩展点看完了。也明白最终这句话应该返回的对象是什么了.
 Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class). getAdaptiveExtension();
