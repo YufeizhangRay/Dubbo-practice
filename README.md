@@ -72,9 +72,9 @@ Dubbo支持的协议：dubbo、RMI、hessian、webservice、http、thirft，默�
 主机绑定  
 在发布一个Dubbo服务的时候，会生成一个dubbo://ip:port的协议地址，那么这个IP是根据什么生成的呢？可以在ServiceConfig.java代码中找到代码;可以发现，在生成绑定的主机的时候，会通过一层一层的判断，直到获取到合法的ip地址。  
 ```
-1.	NetUtils.isInvalidLocalHost(host)， 从配置文件中获取host
-2.	host = InetAddress.getLocalHost().getHostAddress();
-3.	Socket socket = new Socket();
+1.	NetUtils.isInvalidLocalHost(host); 从配置文件中获取host
+2.	host = InetAddress.getLocalHost().getHostAddress(); 直接查询本地地址
+3.	Socket socket = new Socket(); 连接一个socket，再通过socket获取本地地址
 try {
     SocketAddress addr = new InetSocketAddress(registryURL.getHost(), registryURL.getPort());
     socket.connect(addr, 1000);
@@ -85,7 +85,7 @@ try {
         socket.close();
     } catch (Throwable e) {}
 }
-4.public static String getLocalHost(){
+4.public static String getLocalHost(){  遍历本地网卡，返回合理的IP地址
   InetAddress address = getLocalAddress();
   return address == null ? LOCALHOST : address.getHostAddress();
 }
