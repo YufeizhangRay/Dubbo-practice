@@ -72,9 +72,9 @@ Dubbo支持的协议：dubbo、RMI、hessian、webservice、http、thirft，默�
 主机绑定  
 在发布一个Dubbo服务的时候，会生成一个dubbo://ip:port的协议地址，那么这个IP是根据什么生成的呢？可以在ServiceConfig.java代码中找到代码;可以发现，在生成绑定的主机的时候，会通过一层一层的判断，直到获取到合法的ip地址。  
 ```
-1.	NetUtils.isInvalidLocalHost(host); 从配置文件中获取host
-2.	host = InetAddress.getLocalHost().getHostAddress(); 直接查询本地地址
-3.	Socket socket = new Socket(); 连接一个socket，再通过socket获取本地地址
+1.NetUtils.isInvalidLocalHost(host); 从配置文件中获取host
+2.host = InetAddress.getLocalHost().getHostAddress(); 直接查询本地地址
+3.Socket socket = new Socket(); 连接一个socket，再通过socket获取本地地址
 try {
     SocketAddress addr = new InetSocketAddress(registryURL.getHost(), registryURL.getPort());
     socket.connect(addr, 1000);
@@ -120,7 +120,6 @@ dubbo的降级方式：Mock
 >1.	方法级优先，接口级次之，全局配置再次之。
 >2.	如果级别一样，则消费方优先，提供方次之。  
 
-其中，服务提供方配置，通过URL经由注册中心传递给消费方。
 建议由服务提供方设置超时，因为一个方法需要执行多长时间，服务提供方更清楚，如果一个消费方同时引用多个服务，就不需要关心每个服务的超时设置。
   
 #### 5.Dubbo的SPI   
@@ -132,7 +131,7 @@ Dubbo的SPI是基于Java原生SPI机制思想的一个改进，所以，先从JA
   
 关于JAVA 的SPI机制
 SPI全称（service provider interface），是JDK内置的一种服务提供发现机制，目前市面上有很多框架都是用它来做服务的扩展发现，大家耳熟能详的如JDBC、日志框架都有用到；
-简单来说，它是一种动态替换发现的机制。举个简单的例子，如果我们定义了一个规范，需要第三方厂商去实现，那么对于我们应用方来说，只需要集成对应厂商的插件，既可以完成对应规范的实现机制。 形成一种插拔式的扩展手段。 
+简单来说，它是一种动态替换发现的机制。举个简单的例子，如果我们定义了一个规范，需要第三方厂商去实现，那么对于我们应用方来说，只需要集成对应厂商的插件，既可以完成对应规范的实现机制。形成一种插拔式的扩展手段。 
   
 SPI规范总结
 实现SPI，就需要按照SPI本身定义的规范来进行配置，SPI规范如下
@@ -144,12 +143,12 @@ SPI规范总结
 >3.	通过java.util.ServiceLoader的加载机制来发现
   
 SPI的实际应用
-SPI在很多地方有应用，大家可以看看最常用的java.sql.Driver驱动。JDK官方提供了java.sql.Driver这个驱动扩展点，但是你们并没有看到JDK中有对应的Driver实现。 
-以连接Mysql为例，我们需要添加mysql-connector-java依赖。然后，你们可以在这个jar包中找到SPI的配置信息。如下图，所以java.sql.Driver由各个数据库厂商自行实现。这就是SPI的实际应用，在spring的包中也可以看到相应的痕迹。
+SPI在很多地方有应用，可以看看最常用的java.sql.Driver驱动。JDK官方提供了java.sql.Driver这个驱动扩展点，但是并没有看到JDK中有对应的Driver实现。 
+以连接Mysql为例，我们需要添加mysql-connector-java依赖。可以在这个jar包中找到SPI的配置信息。如下图，所以java.sql.Driver由各个数据库厂商自行实现。这就是SPI的实际应用，在spring的包中也可以看到相应的痕迹。
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/SPI.jpeg)  
    
 SPI的缺点
->1.JDK标准的SPI会一次性加载实例化扩展点的所有实现，什么意思呢？就是如果你在META-INF/service下的文件里面加了N个实现类，那么JDK启动的时候都会一次性全部加载。那么如果有的扩展点实现初始化很耗时或者如果有些实现类并没有用到，那么会很浪费资源。  
+>1.JDK标准的SPI会一次性加载实例化扩展点的所有实现。如果你在META-INF/service下的文件里面加了N个实现类，那么JDK启动的时候都会一次性全部加载。如果有的扩展点实现初始化很耗时或者如果有些实现类并没有用到，那么会很浪费资源。  
 >2.如果扩展点加载失败，会导致调用方报错，而且这个错误很难定位到是这个原因。
   
 Dubbo优化后的SPI实现
@@ -160,26 +159,26 @@ Dubbo的SPI机制规范
 >1.需要在resource目录下配置META-INF/dubbo或者META-INF/dubbo/internal或者META-INF/services，并基于SPI接口去创建一个文件。  
 >2.文件名称和接口名称保持一致，文件内容和SPI有差异，内容是KEY对应Value。  
   
-通过Dubbo，我们可以实现自己的Protocol。
+通过Dubbo的SPI机制，我们可以实现自己的Protocol。
   
 #### 5.部分源码  
-  
-Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class). getAdaptiveExtension();  
-  
-把上面这段代码分成两段，一段是getExtensionLoader、 另一段是getAdaptiveExtension。   
-初步猜想一下:  
->第一段是通过一个Class参数去获得一个ExtensionLoader对象，有点类似一个工厂模式。  
-第二段getAdaptiveExtension，去获得一个自适应的扩展点  
   
 Extension源码的结构  
   
 了解源码结构，建立一个全局认识。结构图如下
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/extention.jpeg)  
   
+Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();  
+  
+把上面这段代码分成两段，一段是getExtensionLoader、 另一段是getAdaptiveExtension。   
+初步猜想一下:  
+>第一段是通过一个Class参数去获得一个ExtensionLoader对象，有点类似一个工厂模式。  
+第二段getAdaptiveExtension，去获得一个自适应的扩展点    
+  
 Protocol源码
-以下是Protocol的源码，在这个源码中可以看到有两个注解，一个是在类级别上的@SPI(“dubbo”). 另一个是@Adaptive
-@SPI 表示当前这个接口是一个扩展点，可以实现自己的扩展实现，默认的扩展点是DubboProtocol。
-@Adaptive  表示一个自适应扩展点，在方法级别上，会动态生成一个适配器类
+以下是Protocol的源码，在这个源码中可以看到有两个注解，一个是在类级别上的@SPI(“dubbo”)，另一个是@Adaptive。  
+@SPI 表示当前这个接口是一个扩展点，可以实现自己的扩展实现，默认的扩展点是DubboProtocol。  
+@Adaptive  表示一个自适应扩展点，在方法级别上，会动态生成一个适配器类。
 ```
 @SPI("dubbo")
 public interface Protocol {
@@ -231,8 +230,8 @@ public interface Protocol {
 ```
 由上述源码可知，我们可以通过Protocol来发布暴露(export()方法)服务于引用消费(refer()方法)服务。  
   
-getExtensionLoader
-该方法需要一个Class类型的参数，该参数表示希望加载的扩展点类型，该参数必须是接口，且该接口必须被@SPI注解注释，否则拒绝处理。检查通过之后首先会检查ExtensionLoader缓存中是否已经存在该扩展对应的ExtensionLoader，如果有则直接返回，否则创建一个新的ExtensionLoader负责加载该扩展实现，同时将其缓存起来。可以看到对于每一个扩展，dubbo中只会有一个对应的ExtensionLoader实例    
+getExtensionLoader  
+该方法需要一个Class类型的参数，该参数表示希望加载的扩展点类型，该参数必须是接口，且该接口必须被@SPI注解注释，否则拒绝处理。检查通过之后首先会检查ExtensionLoader缓存中是否已经存在该扩展对应的ExtensionLoader，如果有则直接返回，否则创建一个新的ExtensionLoader负责加载该扩展实现，同时将其缓存起来。可以看到对于每一个扩展，dubbo中只会有一个对应的ExtensionLoader实例。    
 
 ```
 @SuppressWarnings("unchecked")    
@@ -256,7 +255,8 @@ public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
 }
 ```
 
-ExtensionLoader提供了一个私有的构造函数，并且在这里面对两个成员变量type/objectFactory进行赋值。
+ExtensionLoader  
+提供了一个私有的构造函数，并且在这里面对两个成员变量type/objectFactory进行赋值。
 ```
 private ExtensionLoader(Class<?> type) {
     this.type = type;
@@ -265,12 +265,12 @@ private ExtensionLoader(Class<?> type) {
                     getAdaptiveExtension());
 }
 ```
-getAdaptiveExtension
+getAdaptiveExtension  
 通过getExtensionLoader获得了对应的ExtensionLoader实例以后，再调用getAdaptiveExtension()方法来获得一个自适应扩展点。
 ps：这个自适应扩展点实际上就是一个适配器。
 这个方法里面主要做几个事情：
-1.	从cacheAdaptiveInstance 这个内存缓存中获得一个对象实例
-2.	如果实例为空，说明是第一次加载，则通过双重检查锁的方式去创建一个适配器扩展点
+>1.	从cacheAdaptiveInstance 这个内存缓存中获得一个对象实例
+>2.	如果实例为空，说明是第一次加载，则通过双重检查锁的方式去创建一个适配器扩展点
 ```
 public T getAdaptiveExtension() {
     Object instance = cachedAdaptiveInstance.get();
@@ -296,7 +296,7 @@ public T getAdaptiveExtension() {
     return (T) instance;
 }
 ```
-createAdaptiveExtension
+createAdaptiveExtension  
 这段代码里面有两个结构，一个是injectExtension.  另一个是getAdaptiveExtensionClass()
 我们需要先去了解getAdaptiveExtensionClass这个方法做了什么？很显然，从后面的.newInstance来看，应该是获得一个类并且进行实例。
 
@@ -310,27 +310,26 @@ private T createAdaptiveExtension() {
     }
 }
 ```
-getAdaptiveExtensionClass
+getAdaptiveExtensionClass  
 从类名来看，是获得一个适配器扩展点的类。
 在这段代码中，做了两个事情
-1.	getExtensionClasses() 加载所有路径下的扩展点
-2.	createAdaptiveExtensionClass() 动态创建一个扩展点
+>1.getExtensionClasses() 加载所有路径下的扩展点
+>2.createAdaptiveExtensionClass() 动态创建一个扩展点
 cachedAdaptiveClass这里有个判断，用来判断当前Protocol这个扩展点是否存在一个自定义的适配器，如果有，则直接返回自定义适配器，否则，就动态创建，这个值是在getExtensionClasses中赋值的
 ```
 private Class<?> getAdaptiveExtensionClass() {
     getExtensionClasses();
-    //TODO  不一定？
     if (cachedAdaptiveClass != null) {
         return cachedAdaptiveClass;
     }
     return cachedAdaptiveClass = createAdaptiveExtensionClass();
 }
 ```
-createAdaptiveExtensionClass
+createAdaptiveExtensionClass  
 动态生成适配器代码，以及动态编译
-1.	createAdaptiveExtensionClassCode,  动态创建一个字节码文件。返回code这个字符串
-2.	通过compiler.compile进行编译（默认情况下使用的是javassist）
-3.	通过ClassLoader加载到jvm中
+>1.createAdaptiveExtensionClassCode,  动态创建一个字节码文件。返回code这个字符串
+>2.通过compiler.compile进行编译（默认情况下使用的是javassist）
+>3.通过ClassLoader加载到jvm中
 ```
 //创建一个适配器扩展点。（创建一个动态的字节码文件）
 private Class<?> createAdaptiveExtensionClass() {
@@ -378,20 +377,20 @@ public class Protocol$Adaptive implements com.alibaba.dubbo.rpc.Protocol {
 }
 ```
 Protocol$Adaptive的主要功能 
-1. 从url或扩展接口获取扩展接口实现类的名称； 
-2.根据名称，获取实现类ExtensionLoader.getExtensionLoader(扩展接口类).getExtension(扩展接口实现类名称)，然后调用实现类的方法。
-需要明白一点dubbo的内部传参基本上都是基于Url来实现的，也就是说Dubbo是基于URL驱动的技术
-所以，适配器类的目的是在运行期获取扩展的真正实现来调用，解耦接口和实现，这样的话要不我们自己实现适配器类，要不dubbo帮我们生成，而这些都是通过Adpative来实现。
-到目前为止，我们的AdaptiveExtension的主线走完了，可以简单整理一下他们的调用关系如下
+1. 从url或扩展接口获取扩展接口实现类的名称；  
+2.根据名称，获取实现类ExtensionLoader.getExtensionLoader(扩展接口类).getExtension(扩展接口实现类名称)，然后调用实现类的方法。  
+需要明白一点dubbo的内部传参基本上都是基于URL来实现的，也就是说Dubbo是基于URL驱动的技术。  
+所以，适配器类的目的是在运行期获取扩展的真正实现来调用，解耦接口和实现，这样的话要不我们自己实现适配器类，要不dubbo帮我们生成，而这些都是通过Adpative来实现。  
+到目前为止，我们的AdaptiveExtension的主线走完了，可以简单整理一下他们的调用关系如下：  
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E8%B0%83%E7%94%A8%E7%BB%93%E6%9E%841.jpeg)  
   
-我们再回过去梳理下代码，实际上在调用createAdaptiveExtensionClass之前，还做了一个操作。是执行getExtensionClasses方法，我们来看看这个方法做了什么事情
-getExtensionClasses
-getExtensionClasses这个方法，就是加载扩展点实现类了。这段代码本来应该先看的，但是担心先看这段代码会容易导致大家不好理解。我就把顺序交换了下
-这段代码主要做如下几个事情
-1.	从cachedClasses中获得一个结果，这个结果实际上就是所有的扩展点类，key对应name，value对应class
-2.	通过双重检查锁进行判断
-3.	调用loadExtensionClasses，去加载左右扩展点的实现
+我们再回过去梳理下代码，实际上在调用createAdaptiveExtensionClass之前，还做了一个操作。是执行getExtensionClasses方法，我们来看看这个方法做了什么事情。  
+  
+getExtensionClasses  
+getExtensionClasses这个方法，就是加载扩展点实现类了。  
+>1.从cachedClasses中获得一个结果，这个结果实际上就是所有的扩展点类，key对应name，value对应class
+>2.通过双重检查锁进行判断
+>3.调用loadExtensionClasses，去加载左右扩展点的实现
 ```
 //加载扩展点的实现类
 private Map<String, Class<?>> getExtensionClasses() {
@@ -409,14 +408,14 @@ private Map<String, Class<?>> getExtensionClasses() {
        return classes;
 }
 ```
-loadExtensionClasses
-从不同目录去加载扩展点的实现，在最开始的时候讲到过的。META-INF/dubbo ；META-INF/internal ; META-INF/services
+loadExtensionClasses  
+从不同目录去加载扩展点的实现，在最开始的时候题到过的。META-INF/dubbo ；META-INF/internal ; META-INF/services  
 主要逻辑
-1.	获得当前扩展点的注解，也就是Protocol.class这个类的注解，@SPI
-2.	判断这个注解不为空，则再次获得@SPI中的value值
-3.	如果value有值，也就是@SPI(“dubbo”)，则讲这个dubbo的值赋给cachedDefaultName。这就是为什么我们能够通过
+>1.获得当前扩展点的注解，也就是Protocol.class这个类的注解，@SPI
+>2.判断这个注解不为空，则再次获得@SPI中的value值
+>3.如果value有值，也就是@SPI(“dubbo”)，则讲这个dubbo的值赋给cachedDefaultName。这就是为什么我们能够通过
 ExtensionLoader.getExtensionLoader(Protocol.class).getDefaultExtension() ,能够获得DubboProtocol这个扩展点的原因
-4.	最后，通过loadFile去加载指定路径下的所有扩展点。也就是META-INF/dubbo;META-INF/internal;META-INF/services
+>4.最后，通过loadFile去加载指定路径下的所有扩展点。也就是META-INF/dubbo;META-INF/internal;META-INF/services
 ```
 // 此方法已经getExtensionClasses方法同步过。
 private Map<String, Class<?>> loadExtensionClasses() {
@@ -441,7 +440,7 @@ private Map<String, Class<?>> loadExtensionClasses() {
     return extensionClasses;
 }
 ```
-loadFile
+loadFile  
 解析指定路径下的文件，获取对应的扩展点，通过反射的方式进行实例化以后，put到extensionClasses这个Map集合中
 ```
 private void loadFile(Map<String, Class<?>> extensionClasses, String dir) {
@@ -563,11 +562,10 @@ private void loadFile(Map<String, Class<?>> extensionClasses, String dir) {
     }
 }
 ```
-阶段性小结
-截止到目前，我们已经把基于Protocol的自适应扩展点看完了。也明白最终这句话应该返回的对象是什么了.
-Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class). getAdaptiveExtension();
+截止到目前，我们已经把基于Protocol的自适应扩展点看完了。也明白最终这句话应该返回的对象是什么了。  
+Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class). getAdaptiveExtension();  
 也就是，这段代码中，最终的protocol应该等于= Protocol$Adaptive 
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E8%B0%83%E7%94%A8%E7%BB%93%E6%9E%842.jpeg)  
   
-injectExtension
+injectExtension  
 简单来说，这个方法的作用，是为这个自适应扩展点进行依赖注入。类似于spring里面的依赖注入功能。为适配器类的setter方法插入其他扩展点或实现。
