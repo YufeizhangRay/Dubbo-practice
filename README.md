@@ -620,21 +620,101 @@ injectExtension
 
 #### 服务发布  
     
-ServiceBean在初始化的时候会调afterPropertiesSet方法，其中又调用了父类ServiceConfig的export方法。  
-export->doExport->doExportUrls  
-其中doExportUrls有如下代码：  
+Spring对外留出的扩展  
+dubbo是基于spring 配置来实现服务的发布的，那么一定是基于spring的扩展来写了一套自己的标签，大家在dubbo配置文件中看到的<dubbo:service> ，就是属于自定义扩展标签。  
+  
+要实现自定义扩展，有三个步骤（在spring中定义了两个接口，用来实现扩展）
+>1.NamespaceHandler: 注册一堆BeanDefinitionParser，利用他们来进行解析  
+>2.BeanDefinitionParser:用于解析每个element的内容  
+>3.Spring默认会加载jar包下的META-INF/spring.handlers文件寻找对应的NamespaceHandler   
+以下是Dubbo-config模块下的dubbo-config-spring  
+![]()  
+  
+Dubbo的接入实现  
+Dubbo中spring扩展就是使用spring的自定义类型，所以同样也有NamespaceHandler、BeanDefinitionParser。  
+而NamespaceHandler是DubboNamespaceHandler。  
 ```
-//通过 proxyFactory 来获取 Invoker 对象
-Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class)
-interfaceClass,
-registryURL.addParameterAndEncoded(Constants.EXPORT_KEY,
- 
-url.toFullString()));
-//注册服务
-Exporter<?> exporter = protocol.export(invoker);
-//将 exporter 添加到 list 中
-exporters.add(exporter);
+public class DubboNamespaceHandler extends NamespaceHandlerSupport {
+   static {
+      Version.checkDuplicate(DubboNamespaceHandler.class);
+   }
+   public void init() {
+        registerBeanDefinitionParser("application", new DubboBeanDefinitionParser(ApplicationConfig.class, true));
+        registerBeanDefinitionParser("module", new DubboBeanDefinitionParser(ModuleConfig.class, true));
+        registerBeanDefinitionParser("registry", new DubboBeanDefinitionParser(RegistryConfig.class, true));
+        registerBeanDefinitionParser("monitor", new DubboBeanDefinitionParser(MonitorConfig.class, true));
+        registerBeanDefinitionParser("provider", new DubboBeanDefinitionParser(ProviderConfig.class, true));
+        registerBeanDefinitionParser("consumer", new DubboBeanDefinitionParser(ConsumerConfig.class, true));
+        registerBeanDefinitionParser("protocol", new DubboBeanDefinitionParser(ProtocolConfig.class, true));
+        registerBeanDefinitionParser("service", new DubboBeanDefinitionParser(ServiceBean.class, true));
+        registerBeanDefinitionParser("reference", new DubboBeanDefinitionParser(ReferenceBean.class, false));
+        registerBeanDefinitionParser("annotation", new DubboBeanDefinitionParser(AnnotationBean.class, true));
+    }
+}
 ```
+BeanDefinitionParser全部都使用了DubboBeanDefinitionParser，如果我们向看<dubbo:service>的配置，就直接看DubboBeanDefinitionParser中
+这个里面主要做了一件事，把不同的配置分别转化成spring容器中的bean对象  
+>application对应ApplicationConfig  
+>registry对应RegistryConfig  
+>monitor对应MonitorConfig  
+>provider对应ProviderConfig  
+>consumer对应ConsumerConfig  
+  
+为了在spring启动的时候，也相应的启动provider发布服务注册服务的过程，而同时为了让客户端在启动的时候自动订阅发现服务，加入了两个bean
+ServiceBean、ReferenceBean。  
+分别继承了ServiceConfig和ReferenceConfig  
+同时还分别实现了InitializingBean、DisposableBean, ApplicationContextAware, ApplicationListener, BeanNameAware  
+>InitializingBean接口为bean提供了初始化方法的方式，它只包括afterPropertiesSet方法，凡是继承该接口的类，在初始化bean的时候会执行该方法。  
+>DisposableBean bean被销毁的时候，spring容器会自动执行destory方法，比如释放资源  
+>ApplicationContextAware 实现了这个接口的bean，当spring容器初始化的时候，会自动的将ApplicationContext注入进来  
+>ApplicationListener  ApplicationEvent事件监听，spring容器启动后会发一个事件通知  
+>BeanNameAware 获得自身初始化时，本身的bean的id属性  
+  
+那么基本的实现思路可以整理出来了
+>1.利用spring的解析收集xml中的配置信息，然后把这些配置信息存储到serviceConfig中  
+>2.调用ServiceConfig的export方法来进行服务的发布和注册  
+  
+serviceBean是服务发布的切入点，通过afterPropertiesSet方法，调用export()方法进行发布。  
+export为父类ServiceConfig中的方法，所以跳转到SeviceConfig类中的export方法。  
+export是synchronized修饰的方法。也就是说暴露的过程是原子操作，正常情况下不会出现锁竞争的问题，毕竟初始化过程大多数情况下都是单一线程操作，这里联想到了spring的初始化流程，也进行了加锁操作，这里也给我们平时设计一个不错的启示：初始化流程的性能调优优先级应该放的比较低，但是安全的优先级应该放的比较高！  
+调用链export->doExport->doExportUrls->doExportUrlsFor1Protocol    
+其中doExportUrlsFor1Protocol有如下代码：  
+```
+if (! Constants.SCOPE_LOCAL.toString().equalsIgnoreCase(scope) ){
+    if (logger.isInfoEnabled()) {
+        logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
+    }
+    if (registryURLs != null && registryURLs.size() > 0
+            && url.getParameter("register", true)) {
+        for (URL registryURL : registryURLs) {
+            url = url.addParameterIfAbsent("dynamic", registryURL.getParameter("dynamic"));
+            URL monitorUrl = loadMonitor(registryURL);
+            if (monitorUrl != null) {
+                url = url.addParameterAndEncoded(Constants.MONITOR_KEY, monitorUrl.toFullString());
+            }
+            if (logger.isInfoEnabled()) {
+                logger.info("Register dubbo service " + interfaceClass.getName() + " url " + url + " to registry " + registryURL);
+            }
+            //通过proxyFactory来获取Invoker对象
+            Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
+            //注册服务
+            Exporter<?> exporter = protocol.export(invoker);
+            //将exporter添加到list中
+            exporters.add(exporter);
+        }
+    } else {
+        Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
+        Exporter<?> exporter = protocol.export(invoker);
+        exporters.add(exporter);
+    }
+}
+
+```
+看到这里就比较明白dubbo的工作原理了doExportUrlsFor1Protocol方法，先创建两个URL，分别如下  
+dubbo://192.168.xxx.138:20880/cn.zyf.IHello;  
+registry://192.168.xx ; 
+是不是觉得这个URL很眼熟，没错在注册中心看到的services的providers信息就是这个。  
+  
 在上面这段代码中可以看到 Dubbo 的比较核心的抽象:Invoker  
 Invoker 是一个代理类，从 ProxyFactory 中生成。  
 这个地方可以做一个小结  
@@ -644,13 +724,87 @@ Invoker 是一个代理类，从 ProxyFactory 中生成。
 
 protocol 这个地方，其实并不是直接调用 DubboProtocol 协议的 export，实际上这个 Protocol 得到的应该是一个 Protocol$Adaptive。一个自适应的适配器。这个时候，通过 protocol.export(invoker),实际上调用的应该是 Protocol$Adaptive 这个动态类的 export 方法。此方法含有如下代码：  
 ```
-com.alibaba.dubbo.rpc.Protocol extension =
-(com.alibaba.dubbo.rpc.Protocol)
-ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.rpc.Protocol.class)
-.getExtension(extName);
+com.alibaba.dubbo.rpc.Protocol extension =(com.alibaba.dubbo.rpc.Protocol)
+ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.rpc.Protocol.class).getExtension(extName);
 return extension.export(arg0);
 ```
-可以获得一个具体的类，例如当 extName 为 registry 的时候，我们可以定位到 RegistryProtocolRegistryProtocol 好这个类中的 export 方法。  
+这段代码做了什么事情呢？前面这段代码我们已经理解了，通过工厂模式获得一个ExtensionLoader实例，我们来分析下下getExtension这个方法。  
+
+getExtension  
+这个方法的主要作用是用来获取ExtensionLoader实例代表的扩展的指定实现。已扩展实现的名字作为参数，结合前面学习getAdaptiveExtension的代码。  
+```
+@SuppressWarnings("unchecked")
+public T getExtension(String name) {
+   if (name == null || name.length() == 0)
+       throw new IllegalArgumentException("Extension name == null");
+   if ("true".equals(name)) {
+       return getDefaultExtension();
+   }
+//判断是否已经缓存过该扩展点
+   Holder<Object> holder = cachedInstances.get(name);
+   if (holder == null) {
+       cachedInstances.putIfAbsent(name, new Holder<Object>());
+       holder = cachedInstances.get(name);
+   }
+   Object instance = holder.get();
+   if (instance == null) {
+       synchronized (holder) {
+            instance = holder.get();
+            if (instance == null) {
+//createExtension ，创建扩展点
+                instance = createExtension(name);
+                holder.set(instance);
+            }
+        }
+   }
+   return (T) instance;
+}
+```
+createExtension  
+这个方法主要做4个事情  
+>1.根据name获取对应的class  
+>2.根据class创建一个实例  
+>3.对获取的实例进行依赖注入  
+>4.对实例进行包装，分别调用带Protocol参数的构造函数创建实例，然后进行依赖注入  
+>>a)在dubbo-rpc-api的resources路径下，找到com.alibaba.dubbo.rcp.Protocol文件中有存在filter/listener  
+>>b)遍历cachedWrapperClass对DubboProtocol 进行包装，会通过ProtocolFilterWrapper、ProtocolListenerWrapper包装  
+```
+@SuppressWarnings("unchecked")
+private T createExtension(String name) {  
+    Class<?> clazz = getExtensionClasses().get(name); 
+    if (clazz == null) {
+        throw findException(name);
+    }
+    try {
+        T instance = (T) EXTENSION_INSTANCES.get(clazz);
+        if (instance == null) {
+            EXTENSION_INSTANCES.putIfAbsent(clazz, (T) clazz.newInstance());
+            instance = (T) EXTENSION_INSTANCES.get(clazz);
+        }
+        injectExtension(instance);//对获取的的和实例进行依赖注入
+        Set<Class<?>> wrapperClasses = cachedWrapperClasses;//cachedWrapperClasses是在loadFile中进行赋值的
+        if (wrapperClasses != null && wrapperClasses.size() > 0) {
+            for (Class<?> wrapperClass : wrapperClasses) {
+// 对实例进行包装，分别调用带Protocol参数的构造函数创建实例，然后进行依赖注入。
+                instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
+            }
+        }
+        return instance;
+    } catch (Throwable t) {
+        throw new IllegalStateException("Extension instance(name: " + name + ", class: " +
+                type + ")  could not be instantiated: " + t.getMessage(), t);
+    }
+}
+```
+getExtensionClasses  
+这个方法之前在讲自适应扩展点的时候讲过了，其实就是加载扩展点实现类了。然后调用loadExtensionClasses，去对应文件下去加载指定的扩展点。  
+  
+`ExtensionLoader.getExtensionLoader(Protocol.class).getExtension(extName); ` 
+这段代码中，当extName为registry的时候，可以在扩展点中找到相应的实现扩展点[/dubbo-registry-api/src/main/resources/META-INF/dubbo/internal/com.alibaba.dubbo.rpc.Protocol] 
+配置如下  
+`registry=com.alibaba.dubbo.registry.integration.RegistryProtocol`  
+所以，我们可以定位到RegistryProtocolRegistryProtocol好这个类中的export方法  
+  
 ```
 public <T> Exporter<T> export(final Invoker<T> originInvoker)
 throws RpcException {
@@ -664,7 +818,7 @@ doLocalExport
 exporter = new ExporterChangeableWrapper<T>((Exporter<T>)
 protocol.export(invokerDelegete), originInvoker);
 ```
-protocol在 injectExtension 方法中针对自适应扩展点已经进行了依赖注入。  
+protocol 在 injectExtension 方法中针对自适应扩展点已经进行了依赖注入。  
 protocol 是一个自适应扩展点 Protocol$Adaptive，调用这个自适应扩展点中的 export 方法，这个时候传入的协议地址应该是dubbo://127.0.0.1/xxxx... 但是在 Protocol$Adaptive.export 方法中，ExtensionLoader.getExtension(Protocol.class).getExtension 并不是基于 DubboProtocol 协议去发布服务，因为这里并不是获得一个单纯的 DubboProtocol 扩展点，而是通过 Wrapper 对 Protocol 进行了装饰，装饰器分别为:ProtocolFilterWrapper/ ProtocolListenerWrapper;   
   
 ProtocolFilterWrapper  
@@ -673,17 +827,263 @@ ProtocolFilterWrapper
 >1.它有一个参数为 Protocol protocol 的构造函数;  
 >2.它实现了 Protocol 接口;  
 >3.它使用责任链模式，对 export 和 refer 函数进行了封装  
+部分代码如下  
+```
+public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
+    if (Constants.REGISTRY_PROTOCOL.equals(invoker.getUrl().getProtocol())) {
+        return protocol.export(invoker);
+    }
+    return protocol.export(buildInvokerChain(invoker, Constants.SERVICE_FILTER_KEY, Constants.PROVIDER));
+}
+public void destroy() {
+    protocol.destroy();
+}
+//buildInvokerChain函数：它读取所有的filter类，利用这些类封装invoker
+private static <T> Invoker<T> buildInvokerChain(final Invoker<T> invoker, String key, String group) {
+    Invoker<T> last = invoker;
+    List<Filter> filters = ExtensionLoader.getExtensionLoader(Filter.class).getActivateExtension(invoker.getUrl(), key, group);//自动激活扩展点，根据条件获取当前扩展可自动激活的实现
+    if (filters.size() > 0) {
+        for (int i = filters.size() - 1; i >= 0; i --) {
+            final Filter filter = filters.get(i);
+            final Invoker<T> next = last;
+            last = new Invoker<T>() {
+                public Class<T> getInterface() {
+                    return invoker.getInterface();
+                }
+                public URL getUrl() {
+                    return invoker.getUrl();
+                }
+                public boolean isAvailable() {
+                    return invoker.isAvailable();
+                }
+                public Result invoke(Invocation invocation) throws RpcException {
+                    return filter.invoke(next, invocation);
+                }
+                public void destroy() {
+                    invoker.destroy();
+                }
+                @Override
+                public String toString() {
+                    return invoker.toString();
+                }
+            };
+        }
+    }
+    return last;
+}
+```
+我们看如下文件： /dubbo-rpc-api/src/main/resources/META-INF/dubbo/internal/com.alibaba.dubbo.rpc.Filter
+其实就是对Invoker，通过如下的Filter组装成一个责任链
+```
+echo=com.alibaba.dubbo.rpc.filter.EchoFilter
+generic=com.alibaba.dubbo.rpc.filter.GenericFilter
+genericimpl=com.alibaba.dubbo.rpc.filter.GenericImplFilter
+token=com.alibaba.dubbo.rpc.filter.TokenFilter
+accesslog=com.alibaba.dubbo.rpc.filter.AccessLogFilter
+activelimit=com.alibaba.dubbo.rpc.filter.ActiveLimitFilter
+classloader=com.alibaba.dubbo.rpc.filter.ClassLoaderFilter
+context=com.alibaba.dubbo.rpc.filter.ContextFilter
+consumercontext=com.alibaba.dubbo.rpc.filter.ConsumerContextFilter
+exception=com.alibaba.dubbo.rpc.filter.ExceptionFilter
+executelimit=com.alibaba.dubbo.rpc.filter.ExecuteLimitFilter
+deprecated=com.alibaba.dubbo.rpc.filter.DeprecatedFilter
+compatible=com.alibaba.dubbo.rpc.filter.CompatibleFilter
+timeout=com.alibaba.dubbo.rpc.filter.TimeoutFilter
+```
+这其中涉及到很多功能，包括权限验证、异常、超时等等，当然可以预计计算调用时间等等应该也是在这其中的某个类实现的；  
+这里我们可以看到export和refer过程都会被filter过滤  
   
-现在我们能够定位到 DubboProtocol.export(invoker) 方法，从invoker中获取到url，再调用openServer(url)方法来暴露服务。底层最终通过 NettyTranport 创建基于 Netty 的 server 服务。    
+ProtocolListenerWrapper  
+在这里我们可以看到export和refer分别对应了不同的Wrapper；export是对应的ListenerExporterWrapper。这块暂时先不去分析，因为这个地方并没有提供实现类。
+```
+public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
+    if (Constants.REGISTRY_PROTOCOL.equals(invoker.getUrl().getProtocol())) {
+        return protocol.export(invoker);
+    }
+    return new ListenerExporterWrapper<T>(protocol.export(invoker), 
+            Collections.unmodifiableList(ExtensionLoader.getExtensionLoader(ExporterListener.class)
+                    .getActivateExtension(invoker.getUrl(), Constants.EXPORTER_LISTENER_KEY)));
+}
+
+public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
+    if (Constants.REGISTRY_PROTOCOL.equals(url.getProtocol())) {
+        return protocol.refer(type, url);
+    }
+    return new ListenerInvokerWrapper<T>(protocol.refer(type, url), 
+            Collections.unmodifiableList(
+                    ExtensionLoader.getExtensionLoader(InvokerListener.class)
+                    .getActivateExtension(url, Constants.INVOKER_LISTENER_KEY)));
+}
+```
+DubboProtocol.export  
+通过上面的代码分析完以后，最终我们能够定位到DubboProtocol.export方法。我们看一下dubboProtocol的export方法：openServer(url）
+```
+private void openServer(URL url) {
+    // find server.
+    String key = url.getAddress();//192.168.188.138：20880
+    boolean isServer = url.getParameter(Constants.IS_SERVER_KEY,true);
+    if (isServer) {
+       ExchangeServer server = serverMap.get(key);
+       if (server == null) {//没有的话就是创建服务
+          serverMap.put(key, createServer(url));
+       } else {
+          server.reset(url);
+       }
+    }
+}
+```
+createServer  
+创建服务,开启心跳检测，默认使用netty。组装url  
+```
+private ExchangeServer createServer(URL url) {
+    url = url.addParameterIfAbsent(Constants.CHANNEL_READONLYEVENT_SENT_KEY, Boolean.TRUE.toString());
+    //默认开启heartbeat
+    url = url.addParameterIfAbsent(Constants.HEARTBEAT_KEY, String.valueOf(Constants.DEFAULT_HEARTBEAT));
+    String str = url.getParameter(Constants.SERVER_KEY, Constants.DEFAULT_REMOTING_SERVER);
+
+    if (str != null && str.length() > 0 && ! ExtensionLoader.getExtensionLoader(Transporter.class).hasExtension(str))
+        throw new RpcException("Unsupported server type: " + str + ", url: " + url);
+
+    url = url.addParameter(Constants.CODEC_KEY, Version.isCompatibleVersion() ? COMPATIBLE_CODEC_NAME : DubboCodec.NAME);
+    ExchangeServer server;
+    try {
+        server = Exchangers.bind(url, requestHandler);
+    } catch (RemotingException e) {
+        throw new RpcException("Fail to start server(url: " + url + ") " + e.getMessage(), e);
+    }
+    str = url.getParameter(Constants.CLIENT_KEY);
+    if (str != null && str.length() > 0) {
+        Set<String> supportedTypes = ExtensionLoader.getExtensionLoader(Transporter.class).getSupportedExtensions();
+        if (!supportedTypes.contains(str)) {
+            throw new RpcException("Unsupported client type: " + str);
+        }
+    }
+    return server;
+}
+```
+Exchangers.bind  
+```
+public static ExchangeServer bind(URL url, ExchangeHandler handler) throws RemotingException {
+    if (url == null) {
+        throw new IllegalArgumentException("url == null");
+    }
+    if (handler == null) {
+        throw new IllegalArgumentException("handler == null");
+    }
+    url = url.addParameterIfAbsent(Constants.CODEC_KEY, "exchange");
+    return getExchanger(url).bind(url, handler);
+}
+```
+getExchanger  
+通过ExtensionLoader获得指定的扩展点，type默认为header  
+```
+public static Exchanger getExchanger(URL url) {
+  //url中获得exchanger, 默认为header
+    String type = url.getParameter(Constants.EXCHANGER_KEY, Constants.DEFAULT_EXCHANGER);
+    return getExchanger(type);
+}
+
+public static Exchanger getExchanger(String type) {
+    return ExtensionLoader.getExtensionLoader(Exchanger.class).getExtension(type);
+}
+```
+HeaderExchanger.bind  
+调用headerExchanger的bind方法
+```
+public ExchangeServer bind(URL url, ExchangeHandler handler) throws RemotingException {
+    return new HeaderExchangeServer(Transporters.bind(url, new DecodeHandler(new HeaderExchangeHandler(handler))));
+}
+```
+Transporters.bind  
+通过transporter.bind来进行绑定。
+```
+public static Server bind(URL url, ChannelHandler... handlers) throws RemotingException {
+    if (url == null) {
+        throw new IllegalArgumentException("url == null");
+    }
+    if (handlers == null || handlers.length == 0) {
+        throw new IllegalArgumentException("handlers == null");
+    }
+    ChannelHandler handler;
+    if (handlers.length == 1) {
+        handler = handlers[0];
+    } else {
+        handler = new ChannelHandlerDispatcher(handlers);
+    }
+    return getTransporter().bind(url, handler);
+}
+```
+NettyTransport.bind  
+通过NettyTranport创建基于Netty的server服务  
+```
+public Server bind(URL url, ChannelHandler listener) throws RemotingException {
+    return new NettyServer(url, listener);
+}
+```
+new HeaderExchangeServer  
+在调用HeaderExchanger.bind方法的时候，是先new一个HeaderExchangeServer对当前这个连接去建立心跳机制
+```
+public class HeaderExchangeServer implements ExchangeServer {
+  private final ScheduledExecutorService scheduled = Executors.
+   newScheduledThreadPool(1,new NamedThreadFactory(
+   "dubbo-remoting-server-heartbeat", true));
+  // 心跳定时器
+  private ScheduledFuture<?> heatbeatTimer;
+  // 心跳超时，毫秒。缺省0，不会执行心跳。
+  private int heartbeat;
+  private int heartbeatTimeout;
+  private final Server server;
+  private volatile boolean closed = false;
+
+  public HeaderExchangeServer(Server server) {
+    //..属性赋值
+    //心跳
+    startHeatbeatTimer();
+  }
+    private void startHeatbeatTimer() {
+      //关闭心跳定时
+      stopHeartbeatTimer();
+      if (heartbeat > 0) {
+         //每隔heartbeat时间执行一次
+          heatbeatTimer = scheduled.scheduleWithFixedDelay(
+                  new HeartBeatTask( new HeartBeatTask.ChannelProvider() {
+                      //获取channels
+                      public Collection<Channel> getChannels() {
+                          return Collections.unmodifiableCollection(
+                                  HeaderExchangeServer.this.getChannels() );
+                      }
+                  }, heartbeat, heartbeatTimeout),
+                  heartbeat, heartbeat,TimeUnit.MILLISECONDS);
+      }
+      }
+      //关闭心跳定时
+      private void stopHeartbeatTimer() {
+          try {
+              ScheduledFuture<?> timer = heatbeatTimer;
+              if (timer != null && ! timer.isCancelled()) {
+                  timer.cancel(true);
+              }
+          } catch (Throwable t) {
+              logger.warn(t.getMessage(), t);
+          } finally {
+              heatbeatTimer =null;
+          }
+      }
+```
+心跳线程HeartBeatTask  
+在超时时间之内，发送数据  
+在超时时间在外，是客户端的话，重连；是服务端，那么关闭      
   
 #### 服务注册  
   
+前面，我们已经知道，基于spring这个解析入口，到发布服务的过程，接着基于DubboProtocol去发布，最终调用Netty的api创建了一个NettyServer。  
+那么继续沿着RegistryProtocol.export中的getRegistry方法，来看看注册服务的代码
 ```
 private Registry getRegistry(final Invoker<?> originInvoker){
-URL registryUrl = originInvoker.getUrl(); //获得registry://192.168.11.156:2181 的协议地址
+URL registryUrl = originInvoker.getUrl(); //获得registry://192.168.138.156:2181 的协议地址
 if(Constants.REGISTRY_PROTOCOL.equals(registryUrl.getProtocol())) {//得到 zookeeper 的协议地址
 String protocol = registryUrl.getParameter(Constants.REGISTRY_KEY, Constants.DEFAULT_DIRECTORY);
-//registryUrl 就会变成了 zookeeper://192.168.11.156
+//registryUrl 就会变成了 zookeeper://192.168.188.138
 registryUrl =registryUrl.setProtocol(protocol).removeParameter(Constants.REGIST RY_KEY);
 }
 return registryFactory.getRegistry(registryUrl); 
@@ -692,7 +1092,7 @@ return registryFactory.getRegistry(registryUrl);
 RegistryFactory 这个类的定义是一个扩展点，所以这个自适应适配器应该是 RegistryFactory$Adaptive。  
 我们拿到这个动态生成的自适应扩展点，看看这段代码里面的实现  
 >1. 从 url 中拿到协议头信息，这个时候的协议头是 zookeeper://  
->2. 通过ExtensionLoader.getExtensionLoader(RegistryFactory.class).getExtension(“zookeeper”)去获得一个指定的扩展点，得到一个 ZookeeperRegistryFactory
+>2. 通过ExtensionLoader.getExtensionLoader(RegistryFactory.class).getExtension(“zookeeper”)去获得一个指定的扩展点，而这个扩展点的配置在dubbo-registry-zookeeper/resources/META-INF/dubbo/internal/com.alibaba.dubbo.registry.RegistryFactory。得到一个ZookeeperRegistryFactory。  
 ```
  public class RegistryFactory$Adaptive implements com.alibaba.dubbo.registry.RegistryFactory {
  public com.alibaba.dubbo.registry.Registry getRegistry(com.alibaba.dubbo.common.URL arg0) {
@@ -709,6 +1109,7 @@ RegistryFactory 这个类的定义是一个扩展点，所以这个自适应适�
  }
  }
  ```
+ZookeeperRegistryFactory  
 这个方法中并没有 getRegistry 方法，而是在父类 AbstractRegistryFactory  
 >1. 从缓存 REGISTRIES 中，根据 key 获得对应的 Registry  
 >2. 如果不存在，则创建Registry  
