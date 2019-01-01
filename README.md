@@ -15,7 +15,7 @@
   - [配置优先级别](#配置优先级别)  
   - [负载均衡](#负载均衡)  
 - [5.Dubbo的SPI机制](#5dubbo的spi机制)  
-- [6.Dubbo 2.5.4 源码分析](#6dubbo-2.5.4-源码分析)  
+- [6.Dubbo 2.5.4 源码分析](#6dubbo-254-源码分析)  
   - [Extension源码的结构](#extension源码的结构)  
   - [protocol源码](#protocol源码)  
   - [服务发布](#服务发布)    
