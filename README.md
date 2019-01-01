@@ -753,7 +753,7 @@ ZookeeperRegistry.doRegister
      }
  }
 ```
-#### 消费端启动初始化过程  
+#### 消费端初始化   
   
 消费端的代码解析是从下面这段代码开始的  
 <dubbo:reference id="xxxService" interface="xxx.xxx.Service"/>
@@ -836,7 +836,6 @@ public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
 ```
 cluster   
 doRefer方法中有一个参数是cluster,又是一个自动注入的扩展点。  
-  
 从下面的代码可以看出，这个不仅仅是一个扩展点，而且方法层面上，还有一个@Adaptive，表示会动态生成一个自适应适配器Cluster$Adaptive
 ```
 @SPI(FailoverCluster.NAME)
@@ -875,9 +874,9 @@ public class Cluster$Adaptive implements com.alibaba.dubbo.rpc.cluster.Cluster {
 }
 ```
 RegistryProtocol.doRefer  
->1.将consumer://协议地址注册到注册中心
->2.订阅zookeeper地址的变化
->3.调用cluster.join()方法
+>1.将consumer://协议地址注册到注册中心  
+>2.订阅zookeeper地址的变化  
+>3.调用cluster.join()方法  
 ```
 private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
     RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
@@ -1028,13 +1027,13 @@ protected void notify(URL url, NotifyListener listener, List<URL> urls) {
 }
 ```
 #### 消费端初始化订阅时序图
-![]()  
+![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%B6%88%E8%B4%B9%E5%88%9D%E5%A7%8B%E5%8C%96.jpeg)  
   
 #### 消费端调用时序图  
-![]()  
+![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%B6%88%E8%B4%B9%E7%AB%AF%E8%B0%83%E7%94%A8.jpeg)  
   
 #### 消费端调用过程 
-![]()  
+![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%B6%88%E8%B4%B9%E7%AB%AF%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B.jpeg)  
   
 #### 服务端接收消息处理过程  
   
@@ -1079,9 +1078,9 @@ DecodeHandler:业务解码处理器
   
 HeaderExchangeHandler.received  
 交互层请求响应处理，有三种处理方式  
->1.handlerRequest，双向请求
->2.handler.received 单向请求
->3.handleResponse 响应消息
+>1.handlerRequest，双向请求  
+>2.handler.received 单向请求  
+>3.handleResponse 响应消息  
 ```
 public void received(Channel channel, Object message) throws RemotingException {
     channel.setAttribute(KEY_READ_TIMESTAMP, System.currentTimeMillis());
@@ -1180,10 +1179,10 @@ private <T> ExporterChangeableWrapper<T>  doLocalExport(final Invoker<T> originI
 }
 ```
 Directory  
-集群目录服务Directory， 代表多个Invoker, 可以看成List<Invoker>,它的值可能是动态变化的比如注册中心推送变更。  
-集群选择调用服务时通过目录服务找到所有服务  
-StaticDirectory: 静态目录服务，它的所有Invoker通过构造函数传入，服务消费方引用服务的时候，服务对多注册中心的引用，将Invokers集合直接传入   StaticDirectory构造器，再由Cluster伪装成一个Invoker；StaticDirectory的list方法直接返回所有invoker集合  
-RegistryDirectory: 注册目录服务，它的Invoker集合是从注册中心获取的，它实现了NotifyListener接口实现了回调接口notify(List<Url>)  
+集群目录服务Directory，代表多个Invoker，可以看成List<Invoker>,它的值可能是动态变化的比如注册中心推送变更。    
+集群选择调用服务时通过目录服务找到所有服务。    
+>StaticDirectory: 静态目录服务，它的所有Invoker通过构造函数传入，服务消费方引用服务的时候，服务对多注册中心的引用，将Invokers集合直接传入   StaticDirectory构造器，再由Cluster伪装成一个Invoker；StaticDirectory的list方法直接返回所有invoker集合  
+>RegistryDirectory: 注册目录服务，它的Invoker集合是从注册中心获取的，它实现了NotifyListener接口实现了回调接口notify(List<Url>)  
   
 Directory目录服务的更新过程  
 RegistryProtocol.doRefer方法，也就是消费端在初始化的时候，这里涉及到了RegistryDirectory这个类。然后执行cluster.join(directory)方法。  
@@ -1246,9 +1245,7 @@ protected  List<Invoker<T>> list(Invocation invocation) throws RpcException {
 负载均衡LoadBalance  
 LoadBalance负载均衡，负责从多个Invokers中选出具体的一个Invoker用于本次调用，调用过程中包含了负载均衡的算法。  
 负载均衡代码访问入口  
-在AbstractClusterInvoker.invoke中代码如下，通过名称获得指定的扩展点。  
-  
-RandomLoadBalance  
+在AbstractClusterInvoker.invoke中代码如下，通过名称获得指定的扩展点。    
 ```
 public Result invoke(final Invocation invocation) throws RpcException {
 
