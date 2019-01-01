@@ -4,8 +4,8 @@
   
 ### 特别注明，本文引用了部分Dubbo官网上面的资料，学习Dubbo最好的方式就是去官网。  
 
-- [Dubbo产生的背景](#dubbo产生的背景)  
-- [Dubbo产生的需求](#dubbo产生的需求)  
+- [Dubbo产生背景](#dubbo产生背景)  
+- [Dubbo产生需求](###dubbo产生需求)  
 - [Dubbo的架构](#dubbo的架构)  
 - [Dubbo的架构功能特性](#dubbo的架构功能特性)  
 - [Dubbo的SPI](#dubbo的spi)  
@@ -13,7 +13,7 @@
  
 
   
-### 1.Dubbo产生的背景  
+### 1.Dubbo产生背景  
   
 随着互联网的发展，网站应用的规模不断扩大，常规的垂直应用架构已无法应对，分布式服务架构以及流动计算架构势在必行，亟需一个治理系统确保架构有条不紊的演进。  
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E8%83%8C%E6%99%AF.jpeg)  
@@ -30,7 +30,7 @@
 流动计算架构  
 当服务越来越多，容量的评估，小服务资源的浪费等问题逐渐显现，此时需增加一个调度中心基于访问压力实时管理集群容量，提高集群利用率。此时，用于提高机器利用率的资源调度和治理中心(SOA)是关键。  
   
-### 2.Dubbo产生的需求  
+### 2.Dubbo产生需求  
   
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E9%9C%80%E6%B1%82.jpeg)  
   
