@@ -585,6 +585,7 @@ private void loadFile(Map<String, Class<?>> extensionClasses, String dir) {
 截止到目前，我们已经把基于Protocol的自适应扩展点看完了。也明白最终这句话应该返回的对象是什么了。  
 Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class). getAdaptiveExtension();  
 也就是，这段代码中，最终的protocol应该等于= Protocol$Adaptive 
+#### 暴露服务时序
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E8%B0%83%E7%94%A8%E7%BB%93%E6%9E%842.jpeg)  
   
 injectExtension  
@@ -1044,11 +1045,8 @@ protected void notify(URL url, NotifyListener listener, List<URL> urls) {
     }
 }
 ```
-#### 消费端初始化订阅时序图
+#### 引用服务时序图
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%B6%88%E8%B4%B9%E5%88%9D%E5%A7%8B%E5%8C%96.jpeg)  
-  
-#### 消费端调用时序图  
-![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%B6%88%E8%B4%B9%E7%AB%AF%E8%B0%83%E7%94%A8.jpeg)  
   
 #### 消费端调用过程 
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%B6%88%E8%B4%B9%E7%AB%AF%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B.jpeg)  
@@ -1350,3 +1348,8 @@ protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation
     return invokers.get(random.nextInt(length));
 }
 ```
+#### Dubbo整体设计  
+![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%95%B4%E4%BD%93%E8%AE%BE%E8%AE%A1.jpeg)  
+  
+#### 调用链  
+![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E8%B0%83%E7%94%A8%E9%93%BE.jpeg)
