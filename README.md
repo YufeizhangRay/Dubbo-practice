@@ -4,7 +4,7 @@
   
 ### 特别注明，本文引用了部分Dubbo官网上面的资料，学习Dubbo最好的方式就是去官网。  
 
-- [1.Dubbo产生背景](#1-dubbo产生背景)  
+- [Dubbo产生背景](#dubbo产生背景)  
 - [Dubbo产生需求](#dubbo产生需求)  
 - [Dubbo的架构](#dubbo的架构)  
 - [Dubbo的架构功能特性](#dubbo的架构功能特性)  
@@ -13,7 +13,7 @@
  
 
   
-### 1.Dubbo产生背景  
+### Dubbo产生背景  
   
 随着互联网的发展，网站应用的规模不断扩大，常规的垂直应用架构已无法应对，分布式服务架构以及流动计算架构势在必行，亟需一个治理系统确保架构有条不紊的演进。  
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E8%83%8C%E6%99%AF.jpeg)  
