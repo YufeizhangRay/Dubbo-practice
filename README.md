@@ -1476,7 +1476,7 @@ protected void notify(URL url, NotifyListener listener, List<URL> urls) {
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%B6%88%E8%B4%B9%E5%88%9D%E5%A7%8B%E5%8C%96.jpeg)  
   
 #### 消费端调用过程 
-![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%B6%88%E8%B4%B9%E7%AB%AF%E8%B0%83%E7%94%A8%E8%BF%87%E7%A8%8B.jpeg)  
+![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%B6%88%E8%B4%B9%E7%AB%AF%E8%B0%83%E7%94%A8.jpeg)  
   
 #### 服务端接收消息处理过程  
   
