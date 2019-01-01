@@ -82,7 +82,7 @@ providers：当前服务的提供节点
   
 Dubbo作为支持多协议的的RPC框架，一切都是以URL为基础，上面的记录其实就是以dubbo为协议的地址。  
   
-Dubbo支持的协议：dubbo、RMI、hessian、webservice、http、thirft，默认为dubbo。  
+Dubbo支持的协议：dubbo、RMI、hessian、webservice、http、thirft、memcachedredis、redis、rest，默认为dubbo。  
   
 除此之外，Dubbo也支持多注册中心服务，可以在配置文件中进行配置。  
   
@@ -123,8 +123,8 @@ Dubbo提供了6种容错机制，分别如下：
 >1.	failsafe 失败安全，可以认为是把错误吞掉（记录日志）。
 >2.	failover(默认)   重试其他服务器； retries（2）。
 >3.	failfast 快速失败， 失败以后立马报错。
->4.	failback  失败后自动恢复。
->5.	forking forks. 设置并行数。
+>4.	failback  失败后自动恢复，记录失败，定时重发。
+>5.	forking forks. 并行调用多个服务器，只要返回一个即成功。
 >6.	broadcast  广播，任意一台报错，则执行的方法报错。
   
 #### 服务降级  
@@ -151,7 +151,7 @@ dubbo的降级方式：Mock
   
 >Random LoadBalance  
 随机，按权重设置随机概率。    
-在一个截面上碰撞的概率高，但调用量越大分布越均匀，而且按概率使用权重后也比较均匀，有利于动态调整提供者权重  
+在一个截面上碰撞的概率高，但调用量越大分布越均匀，而且按概率使用权重后也比较均匀，有利于动态调整提供者权重。  
   
 >RoundRobin LoadBalance  
 轮循，按公约后的权重设置轮循比率。  
