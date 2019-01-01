@@ -628,7 +628,8 @@ dubbo是基于spring 配置来实现服务的发布的，那么一定是基于sp
 >2.BeanDefinitionParser:用于解析每个element的内容  
 >3.Spring默认会加载jar包下的META-INF/spring.handlers文件寻找对应的NamespaceHandler   
 以下是Dubbo-config模块下的dubbo-config-spring  
-![]()  
+  
+![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/DubboSpring.jpeg)  
   
 Dubbo的接入实现  
 Dubbo中spring扩展就是使用spring的自定义类型，所以同样也有NamespaceHandler、BeanDefinitionParser。  
@@ -711,8 +712,8 @@ if (! Constants.SCOPE_LOCAL.toString().equalsIgnoreCase(scope) ){
 
 ```
 看到这里就比较明白dubbo的工作原理了doExportUrlsFor1Protocol方法，先创建两个URL，分别如下  
-dubbo://192.168.xxx.138:20880/cn.zyf.IHello;  
-registry://192.168.xx ; 
+>dubbo://192.168.xxx.138:20880/cn.zyf.IHello;  
+>registry://192.168.xx.....;  
 是不是觉得这个URL很眼熟，没错在注册中心看到的services的providers信息就是这个。  
   
 在上面这段代码中可以看到 Dubbo 的比较核心的抽象:Invoker  
@@ -799,7 +800,7 @@ private T createExtension(String name) {
 getExtensionClasses  
 这个方法之前在讲自适应扩展点的时候讲过了，其实就是加载扩展点实现类了。然后调用loadExtensionClasses，去对应文件下去加载指定的扩展点。  
   
-`ExtensionLoader.getExtensionLoader(Protocol.class).getExtension(extName); ` 
+`ExtensionLoader.getExtensionLoader(Protocol.class).getExtension(extName); `   
 这段代码中，当extName为registry的时候，可以在扩展点中找到相应的实现扩展点[/dubbo-registry-api/src/main/resources/META-INF/dubbo/internal/com.alibaba.dubbo.rpc.Protocol] 
 配置如下  
 `registry=com.alibaba.dubbo.registry.integration.RegistryProtocol`  
@@ -890,8 +891,7 @@ deprecated=com.alibaba.dubbo.rpc.filter.DeprecatedFilter
 compatible=com.alibaba.dubbo.rpc.filter.CompatibleFilter
 timeout=com.alibaba.dubbo.rpc.filter.TimeoutFilter
 ```
-这其中涉及到很多功能，包括权限验证、异常、超时等等，当然可以预计计算调用时间等等应该也是在这其中的某个类实现的；  
-这里我们可以看到export和refer过程都会被filter过滤  
+这其中涉及到很多功能，包括权限验证、异常、超时等等，当然可以预计计算调用时间等等应该也是在这其中的某个类实现的；这里我们可以看到export和refer过程都会被filter过滤。  
   
 ProtocolListenerWrapper  
 在这里我们可以看到export和refer分别对应了不同的Wrapper；export是对应的ListenerExporterWrapper。这块暂时先不去分析，因为这个地方并没有提供实现类。
