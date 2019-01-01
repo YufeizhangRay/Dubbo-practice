@@ -8,10 +8,26 @@
 - [2.Dubbo产生需求](#2dubbo产生需求)  
 - [3.Dubbo的架构](#3dubbo的架构)  
 - [4.Dubbo的架构功能特性](#4dubbo的架构功能特性)  
-- [5.Dubbo的SPI](#5dubbo的spi)  
+  - [多版本支持](#多版本支持)  
+  - [主机绑定](#主机绑定)  
+  - [集群容错](#集群容错)  
+  - [服务降级](#服务降级)  
+  - [配置优先级别](#配置优先级别)  
+  - [负载均衡](#负载均衡)  
+- [5.Dubbo的SPI机制](#5dubbo的spi机制)  
 - [6.Dubbo源码分析](#6dubbo源码分析)  
- 
-
+  - [Extension源码的结构](#extension源码的结构)  
+  - [protocol源码](#protocol源码)  
+  - [服务发布](#服务发布)  
+  - [暴露服务时序图](#暴露服务时序图)  
+  - [服务注册](#服务注册)  
+  - [消费端初始化](#消费端初始化)  
+  - [建立和服务端的连接](#建立和服务端的连接)  
+  - [引用服务时序图](#引用服务时序图)  
+  - [消费端调用过程](#消费端调用过程)  
+  - [服务端接收消息处理过程](#服务端接收消息处理过程)  
+  - [Dubbo整体设计](#dubbo整体设计)  
+  - [调用链](#调用链)  
   
 ### 1.Dubbo产生背景  
   
@@ -149,7 +165,7 @@ dubbo的降级方式：Mock
 一致性Hash，相同参数的请求总是发到同一提供者。  
 当某一台提供者挂时，原本发往该提供者的请求，基于虚拟节点，平摊到其它提供者，不会引起剧烈变动。  
   
-### 5.Dubbo的SPI   
+### 5.Dubbo的SPI机制   
   
 Dubbo SPI和JAVA SPI 的使用和对比  
   
@@ -188,7 +204,7 @@ Dubbo的SPI机制规范
   
 通过Dubbo的SPI机制，我们可以实现自己的Protocol。
   
-### 5.Dubbo源码分析  
+### 6.Dubbo源码分析  
   
 #### Extension源码的结构  
   
@@ -594,7 +610,6 @@ private void loadFile(Map<String, Class<?>> extensionClasses, String dir) {
 截止到目前，我们已经把基于Protocol的自适应扩展点看完了。也明白最终这句话应该返回的对象是什么了。  
 Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class). getAdaptiveExtension();  
 也就是，这段代码中，最终的protocol应该等于= Protocol$Adaptive 
-#### 暴露服务时序
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E8%B0%83%E7%94%A8%E7%BB%93%E6%9E%842.jpeg)  
   
 injectExtension  
@@ -659,8 +674,7 @@ ProtocolFilterWrapper
 >2.它实现了 Protocol 接口;  
 >3.它使用责任链模式，对 export 和 refer 函数进行了封装  
   
-现在我们能够定位到 DubboProtocol.export(invoker) 方法，从invoker中获取到url，再调用openServer(url)方法来暴露服务。底层最终通过 NettyTranport 创建基于 Netty 的 server 服务。  
-![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%9C%8D%E5%8A%A1%E6%9A%B4%E9%9C%B2.jpeg)  
+现在我们能够定位到 DubboProtocol.export(invoker) 方法，从invoker中获取到url，再调用openServer(url)方法来暴露服务。底层最终通过 NettyTranport 创建基于 Netty 的 server 服务。    
   
 #### 服务注册  
   
@@ -781,6 +795,9 @@ ZookeeperRegistry.doRegister
      }
  }
 ```
+#### 暴露服务时序图
+![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%9C%8D%E5%8A%A1%E6%9A%B4%E9%9C%B2.jpeg)  
+  
 #### 消费端初始化   
   
 消费端的代码解析是从下面这段代码开始的  
