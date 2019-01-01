@@ -4,7 +4,7 @@
   
 ### 特别注明，本文引用了部分Dubbo官网上面的资料，学习Dubbo最好的方式就是去官网。  
 
-- [1.Dubbo产生背景](#1.dubbo产生背景)  
+- [1.Dubbo产生背景](#1dubbo产生背景)  
 - [Dubbo产生需求](#dubbo产生需求)  
 - [Dubbo的架构](#dubbo的架构)  
 - [Dubbo的架构功能特性](#dubbo的架构功能特性)  
