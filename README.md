@@ -809,15 +809,13 @@ getExtensionClasses
 ```
 public <T> Exporter<T> export(final Invoker<T> originInvoker)
 throws RpcException {
-final ExporterChangeableWrapper<T> exporter =
-doLocalExport(originInvoker);//本地发布服务(启动 netty)
+final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker);//本地发布服务(启动 netty)
 final Registry registry = getRegistry(originInvoker);//服务注册
 ......
 ```
 doLocalExport  
 ```
-exporter = new ExporterChangeableWrapper<T>((Exporter<T>)
-protocol.export(invokerDelegete), originInvoker);
+exporter = new ExporterChangeableWrapper<T>((Exporter<T>)protocol.export(invokerDelegete), originInvoker);
 ```
 protocol 在 injectExtension 方法中针对自适应扩展点已经进行了依赖注入。  
 protocol 是一个自适应扩展点 Protocol$Adaptive，调用这个自适应扩展点中的 export 方法，这个时候传入的协议地址应该是dubbo://127.0.0.1/xxxx... 但是在 Protocol$Adaptive.export 方法中，ExtensionLoader.getExtension(Protocol.class).getExtension 并不是基于 DubboProtocol 协议去发布服务，因为这里并不是获得一个单纯的 DubboProtocol 扩展点，而是通过 Wrapper 对 Protocol 进行了装饰，装饰器分别为:ProtocolFilterWrapper/ ProtocolListenerWrapper;   
@@ -1080,13 +1078,13 @@ public class HeaderExchangeServer implements ExchangeServer {
 那么继续沿着RegistryProtocol.export中的getRegistry方法，来看看注册服务的代码
 ```
 private Registry getRegistry(final Invoker<?> originInvoker){
-URL registryUrl = originInvoker.getUrl(); //获得registry://192.168.138.156:2181 的协议地址
-if(Constants.REGISTRY_PROTOCOL.equals(registryUrl.getProtocol())) {//得到 zookeeper 的协议地址
-String protocol = registryUrl.getParameter(Constants.REGISTRY_KEY, Constants.DEFAULT_DIRECTORY);
-//registryUrl 就会变成了 zookeeper://192.168.188.138
-registryUrl =registryUrl.setProtocol(protocol).removeParameter(Constants.REGIST RY_KEY);
-}
-return registryFactory.getRegistry(registryUrl); 
+  URL registryUrl = originInvoker.getUrl(); //获得registry://192.168.138.156:2181 的协议地址
+  if(Constants.REGISTRY_PROTOCOL.equals(registryUrl.getProtocol())) {//得到 zookeeper 的协议地址
+    String protocol = registryUrl.getParameter(Constants.REGISTRY_KEY, Constants.DEFAULT_DIRECTORY);
+    //registryUrl 就会变成了 zookeeper://192.168.188.138
+    registryUrl =registryUrl.setProtocol(protocol).removeParameter(Constants.REGIST RY_KEY);
+  }
+  return registryFactory.getRegistry(registryUrl); 
 }
 ```
 RegistryFactory 这个类的定义是一个扩展点，所以这个自适应适配器应该是 RegistryFactory$Adaptive。  
@@ -1094,74 +1092,79 @@ RegistryFactory 这个类的定义是一个扩展点，所以这个自适应适�
 >1. 从 url 中拿到协议头信息，这个时候的协议头是 zookeeper://  
 >2. 通过ExtensionLoader.getExtensionLoader(RegistryFactory.class).getExtension(“zookeeper”)去获得一个指定的扩展点，而这个扩展点的配置在dubbo-registry-zookeeper/resources/META-INF/dubbo/internal/com.alibaba.dubbo.registry.RegistryFactory。得到一个ZookeeperRegistryFactory。  
 ```
- public class RegistryFactory$Adaptive implements com.alibaba.dubbo.registry.RegistryFactory {
- public com.alibaba.dubbo.registry.Registry getRegistry(com.alibaba.dubbo.common.URL arg0) {
- if (arg0 == null) throw new IllegalArgumentException("url == null");
- com.alibaba.dubbo.common.URL url = arg0;
- String extName = (url.getProtocol() == null ? "dubbo" : url.getProtocol());
- if (extName == null)
- throw new IllegalStateException("Fail to get extension(com.alibaba.dubbo.registry.RegistryFactory) " +
- "name from url(" + url.toString() + ") use keys([protocol])");
- com.alibaba.dubbo.registry.RegistryFactory extension = (com.alibaba.dubbo.registry.RegistryFactory)
- ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.registry.RegistryFactory.class).
- getExtension(extName); 
-     return extension.getRegistry(arg0);
- }
- }
+public class RegistryFactory$Adaptive implements com.alibaba.dubbo.registry.RegistryFactory {
+  public com.alibaba.dubbo.registry.Registry getRegistry(com.alibaba.dubbo.common.URL arg0) {
+    if (arg0 == null) throw new IllegalArgumentException("url == null");
+    com.alibaba.dubbo.common.URL url = arg0;
+    String extName = (url.getProtocol() == null ? "dubbo" : url.getProtocol());
+    if (extName == null)
+        throw new IllegalStateException("Fail to get extension(com.alibaba.dubbo.registry.RegistryFactory) " +
+        "name from url(" + url.toString() + ") use keys([protocol])");
+    com.alibaba.dubbo.registry.RegistryFactory extension = (com.alibaba.dubbo.registry.RegistryFactory)
+    ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.registry.RegistryFactory.class).getExtension(extName); 
+    return extension.getRegistry(arg0);
+  }
+}
  ```
 ZookeeperRegistryFactory  
 这个方法中并没有 getRegistry 方法，而是在父类 AbstractRegistryFactory  
 >1. 从缓存 REGISTRIES 中，根据 key 获得对应的 Registry  
 >2. 如果不存在，则创建Registry  
 ```
- public Registry getRegistry(URL url) {
- url = url.setPath(RegistryService.class.getName())
- .addParameter(Constants.INTERFACE_KEY,RegistryService.class.getName())
- .removeParameters(Constants.EXPORT_KEY,Constants.REFER_KEY);
- String key = url.toServiceString();// 锁定注册中心获取过程，保证注册中心单一实例
- LOCK.lock();
- try {
- Registry registry = REGISTRIES.get(key);
- if (registry != null) {
- return registry;
- }
+public Registry getRegistry(URL url) {
+  url = url.setPath(RegistryService.class.getName())
+            .addParameter(Constants.INTERFACE_KEY,RegistryService.class.getName())
+            .removeParameters(Constants.EXPORT_KEY,Constants.REFER_KEY);
+  String key = url.toServiceString();// 锁定注册中心获取过程，保证注册中心单一实例
+  LOCK.lock();
+  try {
+    Registry registry = REGISTRIES.get(key);
+    if (registry != null) {
+       return registry;
+    }
     registry = createRegistry(url);
- if (registry == null) {
- throw new IllegalStateException("Can not createregistry " + url);
- }
- REGISTRIES.put(key, registry);
- return registry;
- } finally {
- // 释放锁
- LOCK.unlock();
- }
- }
+    if (registry == null) {
+      throw new IllegalStateException("Can not createregistry " + url);
+    }
+    REGISTRIES.put(key, registry);
+    return registry;
+  } finally {
+    // 释放锁
+    LOCK.unlock();
+  }
+}
  ```
 createRegistry  
 创建一个注册中心，这个是一个抽象方法，具体的实现在对应的子类实例中实现的，在 ZookeeperRegistryFactory 中
 ```
 public Registry createRegistry(URL url) {
  return new ZookeeperRegistry(url, zookeeperTransporter);
- }
+}
 ```
 通过 zkClient，获得一个 zookeeper 的连接实例
 ```
 public ZookeeperRegistry(URL url, ZookeeperTransporter zookeeperTransporter) {
-super(url);
-if (url.isAnyHost()) {
-throw new IllegalStateException("registry address == null"); }
-String group = url.getParameter(Constants.GROUP_KEY, DEFAULT_ROOT);
-if (! group.startsWith(Constants.PATH_SEPARATOR)) { group = Constants.PATH_SEPARATOR + group;
-}
-this.root = group; //设置根节点
-zkClient = zookeeperTransporter.connect(url);//建立连接
-zkClient.addStateListener(new StateListener() { public void stateChanged(int state) {
-if (state == RECONNECTED) { try {
-recover();
-} catch (Exception e) {
-logger.error(e.getMessage(), e); }
-}
- } });
+  super(url);
+  if (url.isAnyHost()) {
+    throw new IllegalStateException("registry address == null");
+  }
+  String group = url.getParameter(Constants.GROUP_KEY, DEFAULT_ROOT);
+  if (! group.startsWith(Constants.PATH_SEPARATOR)) { 
+  group = Constants.PATH_SEPARATOR + group;
+  }
+  this.root = group; //设置根节点
+  zkClient = zookeeperTransporter.connect(url);//建立连接
+  zkClient.addStateListener(new StateListener() { 
+    public void stateChanged(int state) {
+      if (state == RECONNECTED) { 
+        try {
+          recover();
+        } catch (Exception e) {
+          logger.error(e.getMessage(), e); 
+        }
+      }
+    } 
+ });
 }
 ```
 代码分析到这里，我们对于 getRegistry 得出了一个结论，根据当前注册中心的配置信息，获得一个匹配的注册中心，也就是 ZookeeperRegistry 
@@ -1176,25 +1179,25 @@ FailbackRegistry.register
 ```
 @Override
 public void register(URL url) {
-     super.register(url);
- failedRegistered.remove(url);
- failedUnregistered.remove(url);
- try {
- // 向服务器端发送注册请求
- doRegister(url);
- } catch (Exception e) {
+  super.register(url);
+  failedRegistered.remove(url);
+  failedUnregistered.remove(url);
+  try {
+    // 向服务器端发送注册请求
+    doRegister(url);
+  } catch (Exception e) {
  ......
  ```
 ZookeeperRegistry.doRegister  
 调用 zkclient.create 在 zookeeper 中创建一个节点。
 ```
- protected void doRegister(URL url) {
- try {
- zkClient.create(toUrlPath(url),url.getParameter(Constants.DYNAMIC_KEY, true));
- } catch (Throwable e) {
- throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);  
-     }
- }
+protected void doRegister(URL url) {
+  try {
+    zkClient.create(toUrlPath(url),url.getParameter(Constants.DYNAMIC_KEY, true));
+  } catch (Throwable e) {
+    throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);  
+  }
+}
 ```
 #### 暴露服务时序图
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/%E6%9C%8D%E5%8A%A1%E6%9A%B4%E9%9C%B2.jpeg)  
@@ -1202,10 +1205,10 @@ ZookeeperRegistry.doRegister
 #### 消费端初始化   
   
 消费端的代码解析是从下面这段代码开始的  
-<dubbo:reference id="xxxService" interface="xxx.xxx.Service"/>
-ReferenceBean(afterPropertiesSet) ->getObject() ->get()->init()->createProxy 最终会获得一个代理对象。  
+<dubbo:reference id="xxxService" interface="xxx.xxx.Service"/>  
+ReferenceBean(afterPropertiesSet)->getObject()->get()->init()->createProxy 最终会获得一个代理对象。  
 createProxy第375行  
-前面很多代码都是初始化的动作，需要仔细分析的代码代码从createProxy第375行开始  
+前面很多代码都是初始化的动作，需要仔细分析的代码代码从createProxy第375行开始。  
 ```
 List<URL> us = loadRegistries(false); //从注册中心上获得相应的协议url地址
 if (us != null && us.size() > 0) {
@@ -1245,15 +1248,15 @@ refprotocol这个对象，定义的代码如下，是一个自适应扩展点，
 Protocol refprotocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();  
 直接找到Protocol$Adaptive代码中的refer代码块如下  
 ```
-    public com.alibaba.dubbo.rpc.Invoker refer(java.lang.Class arg0, com.alibaba.dubbo.common.URL arg1) throws com.alibaba.dubbo.rpc.RpcException {
-        if (arg1 == null) throw new IllegalArgumentException("url == null");
-        com.alibaba.dubbo.common.URL url = arg1;
-        String extName = (url.getProtocol() == null ? "dubbo" : url.getProtocol());
-        if (extName == null)
-            throw new IllegalStateException("Fail to get extension(com.alibaba.dubbo.rpc.Protocol) name from url(" + url.toString() + ") use keys([protocol])");
-        com.alibaba.dubbo.rpc.Protocol extension = (com.alibaba.dubbo.rpc.Protocol) ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.rpc.Protocol.class).getExtension(extName);
-        return extension.refer(arg0, arg1);
-    }
+public com.alibaba.dubbo.rpc.Invoker refer(java.lang.Class arg0, com.alibaba.dubbo.common.URL arg1) throws com.alibaba.dubbo.rpc.RpcException {
+  if (arg1 == null) throw new IllegalArgumentException("url == null");
+  com.alibaba.dubbo.common.URL url = arg1;
+  String extName = (url.getProtocol() == null ? "dubbo" : url.getProtocol());
+  if (extName == null)
+    throw new IllegalStateException("Fail to get extension(com.alibaba.dubbo.rpc.Protocol) name from url(" + url.toString() + ") use keys([protocol])");
+  com.alibaba.dubbo.rpc.Protocol extension = (com.alibaba.dubbo.rpc.Protocol)ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.rpc.Protocol.class).getExtension(extName);
+   return extension.refer(arg0, arg1);
+}
 ```
 这段代码中，根据当前的协议url，得到一个指定的扩展点，传递进来的参数中，协议地址为registry://，所以，我们可以直接定位到RegistryProtocol.refer代码。 
   
@@ -1263,22 +1266,21 @@ RegistryProtocol.refer
 >2.调用doRefer，按方法，传递了几个参数， 其中有一个culster参数，这个需要注意下
 ```
 public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
-       url = url.setProtocol(url.getParameter(Constants.REGISTRY_KEY, Constants.DEFAULT_REGISTRY)).removeParameter(Constants.REGISTRY_KEY);
-       Registry registry = registryFactory.getRegistry(url);
-       if (RegistryService.class.equals(type)) {
-           return proxyFactory.getInvoker((T) registry, type, url);
-       }
-       // group="a,b" or group="*"
-       Map<String, String> qs = StringUtils.parseQueryString(url.getParameterAndDecoded(Constants.REFER_KEY));
-       String group = qs.get(Constants.GROUP_KEY);
-       if (group != null && group.length() > 0 ) {
-           if ( ( Constants.COMMA_SPLIT_PATTERN.split( group ) ).length > 1
-                   || "*".equals( group ) ) {
-               return doRefer( getMergeableCluster(), registry, type, url );
-           }
-       }
-       return doRefer(cluster, registry, type, url);
-   }
+  url = url.setProtocol(url.getParameter(Constants.REGISTRY_KEY,Constants.DEFAULT_REGISTRY)).removeParameter(Constants.REGISTRY_KEY);
+  Registry registry = registryFactory.getRegistry(url);
+  if (RegistryService.class.equals(type)) {
+    return proxyFactory.getInvoker((T) registry, type, url);
+  }
+  // group="a,b" or group="*"
+  Map<String, String> qs = StringUtils.parseQueryString(url.getParameterAndDecoded(Constants.REFER_KEY));
+  String group = qs.get(Constants.GROUP_KEY);
+  if (group != null && group.length() > 0 ) {
+    if ( ( Constants.COMMA_SPLIT_PATTERN.split( group ) ).length > 1 || "*".equals( group ) ) {
+      return doRefer( getMergeableCluster(), registry, type, url );
+    }
+  }
+  return doRefer(cluster, registry, type, url);
+}
 ```
 cluster   
 doRefer方法中有一个参数是cluster,又是一个自动注入的扩展点。  
@@ -1368,13 +1370,17 @@ proxyFactory.getProxy(invoker);
 ProxyFactory，会生成一个动态的自适应适配器。ProxyFactory$Adaptive，然后调用这个适配器中的getProxy方法  
 ```
 public java.lang.Object getProxy(com.alibaba.dubbo.rpc.Invoker arg0) throws com.alibaba.dubbo.rpc.RpcException {
-        if (arg0 == null) throw new IllegalArgumentException("com.alibaba.dubbo.rpc.Invoker argument == null");
-        if (arg0.getUrl() == null) throw new IllegalArgumentException("com.alibaba.dubbo.rpc.Invoker argument getUrl() == null");com.alibaba.dubbo.common.URL url = arg0.getUrl();
-        String extName = url.getParameter("proxy", "javassist");
-        if(extName == null) throw new IllegalStateException("Fail to get extension(com.alibaba.dubbo.rpc.ProxyFactory) name from url(" + url.toString() + ") use keys([proxy])");
-        com.alibaba.dubbo.rpc.ProxyFactory extension = (com.alibaba.dubbo.rpc.ProxyFactory)ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.rpc.ProxyFactory.class).getExtension(extName);
-        return extension.getProxy(arg0);
-    }
+    if (arg0 == null) 
+        throw new IllegalArgumentException("com.alibaba.dubbo.rpc.Invoker argument == null");
+    if (arg0.getUrl() == null) 
+        throw new IllegalArgumentException("com.alibaba.dubbo.rpc.Invoker argument getUrl() == null");
+    com.alibaba.dubbo.common.URL url = arg0.getUrl();
+    String extName = url.getParameter("proxy", "javassist");
+    if(extName == null) 
+        throw new IllegalStateException("Fail to get extension(com.alibaba.dubbo.rpc.ProxyFactory) name from url(" + url.toString() + ") use keys([proxy])");
+    com.alibaba.dubbo.rpc.ProxyFactory extension = (com.alibaba.dubbo.rpc.ProxyFactory)ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.rpc.ProxyFactory.class).getExtension(extName);
+    return extension.getProxy(arg0);
+}
 ```
 通过javassist实现的一个动态代理。  
   
@@ -1602,7 +1608,7 @@ private ExchangeHandler requestHandler = new ExchangeHandlerAdapter() {
 }
 ```
 在RegistryDirectory中发布本地方法的时候通过InvokerDelegete对原本的invoker做了一层包装，而原本的invoker是一个JavassistProxyFactory生成的动态代理吧。所以此处的invoker应该是  
-Filter(Listener(InvokerDelegete(AbstractProxyInvoker (Wrapper.invokeMethod)))    
+Filter(Listener(InvokerDelegete(AbstractProxyInvoker (Wrapper.invokeMethod)))）    
 RegistryDirectory生成invoker的代码如下  
 ```
 private <T> ExporterChangeableWrapper<T>  doLocalExport(final Invoker<T> originInvoker){
