@@ -1604,7 +1604,15 @@ ExchangeHandlerAdaptive.replay(DubboProtocol)
 private ExchangeHandler requestHandler = new ExchangeHandlerAdapter() {
     
     public Object reply(ExchangeChannel channel, Object message) throws RemotingException {
-     invoker.invoke(inv);
+        if (message instanceof Invocation) {
+            Invocation inv = (Invocation) message;
+            Invoker<?> invoker = getInvoker(channel, inv);
+            RpcContext.getContext().setRemoteAddress(channel.getRemoteAddress());
+            ......
+            return invoker.invoke(inv);
+        }
+        throw new RemotingException(channel, "Unsupported request: " + message == null ? null : (message.getClass().getName() + ": " + message) + ", channel: consumer: " + channel.getRemoteAddress() + " --> provider: " + channel.getLocalAddress());
+    }
 }
 ```
 在RegistryDirectory中发布本地方法的时候通过InvokerDelegete对原本的invoker做了一层包装，而原本的invoker是一个JavassistProxyFactory生成的动态代理吧。所以此处的invoker应该是  
