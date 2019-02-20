@@ -804,7 +804,7 @@ getExtensionClasses
 这段代码中，当extName为registry的时候，可以在扩展点中找到相应的实现扩展点[/dubbo-registry-api/src/main/resources/META-INF/dubbo/internal/com.alibaba.dubbo.rpc.Protocol] 
 配置如下  
 `registry=com.alibaba.dubbo.registry.integration.RegistryProtocol`  
-所以，我们可以定位到RegistryProtocolRegistryProtocol好这个类中的export方法  
+所以，我们可以定位到RegistryProtocol这个类中的export方法  
   
 ```
 public <T> Exporter<T> export(final Invoker<T> originInvoker)
