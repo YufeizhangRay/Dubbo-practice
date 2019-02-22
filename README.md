@@ -185,7 +185,7 @@ SPI规范总结
 >>c)	文件的编码格式是UTF-8  
 >3.	通过java.util.ServiceLoader的加载机制来发现
   
-SPI的实际应用
+SPI的实际应用  
 SPI在很多地方有应用，可以看看最常用的java.sql.Driver驱动。JDK官方提供了java.sql.Driver这个驱动扩展点，但是并没有看到JDK中有对应的Driver实现。 
 以连接Mysql为例，我们需要添加mysql-connector-java依赖。可以在这个jar包中找到SPI的配置信息。如下图，所以java.sql.Driver由各个数据库厂商自行实现。这就是SPI的实际应用，在spring的包中也可以看到相应的痕迹。
 ![](https://github.com/YufeizhangRay/image/blob/master/Dubbo/SPI.jpeg)  
