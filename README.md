@@ -82,7 +82,7 @@ providers：当前服务的提供节点
   
 Dubbo作为支持多协议的的RPC框架，一切都是以URL为基础，上面的记录其实就是以dubbo为协议的地址。  
   
-Dubbo支持的协议：dubbo、RMI、hessian、webservice、http、thirft、memcachedredis、redis、rest，默认为dubbo。  
+Dubbo支持的协议：dubbo、RMI、hessian、webservice、http、thirft、memcached、redis、rest，默认为dubbo。  
   
 除此之外，Dubbo也支持多注册中心服务，可以在配置文件中进行配置。  
   
