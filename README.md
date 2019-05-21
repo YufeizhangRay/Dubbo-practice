@@ -1598,8 +1598,8 @@ Response handleRequest(ExchangeChannel channel, Request req) throws RemotingExce
     return res;
 }
 ```
-ExchangeHandlerAdaptive.replay(DubboProtocol)   
-调用DubboProtocol中定义的ExchangeHandlerAdaptive.replay方法处理消息   
+ExchangeHandlerAdaptive.reply(DubboProtocol)   
+调用DubboProtocol中定义的ExchangeHandlerAdaptive.reply方法处理消息   
 ```
 private ExchangeHandler requestHandler = new ExchangeHandlerAdapter() {
     
